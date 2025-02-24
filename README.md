@@ -5,6 +5,8 @@
 
 Gaggiuino REST API Wrapper for Python
 ---------------------------
+Repository: https://github.com/ALERTua/gaggiuino_api
+PyPi: https://pypi.org/project/gaggiuino_api/
 
 The Gaggiuino REST API Wrapper is a Python library that provides a simple and efficient way to interact with [Gaggiuino-enabled](https://gaggiuino.github.io/) espresso machines.
 This asynchronous client allows users to manage coffee profiles, retrieve shot data, and control their Gaggiuino-modified espresso machines through a REST API interface.
@@ -25,71 +27,78 @@ pip install gaggiuino
 ```
 
 ### Quick Start
+
 ```python
 import asyncio
-from gaggiuino import GaggiuinoAPI
+from gaggiuino_api import GaggiuinoAPI
+
 
 async def main():
-    async with GaggiuinoAPI() as client:
-        # Get all available profiles
-        profiles = await client.get_profiles()
+  async with GaggiuinoAPI() as client:
+    # Get all available profiles
+    profiles = await client.get_profiles()
 
-        # Select a profile by ID
-        await client.select_profile(profiles[0])
+    # Select a profile by ID
+    await client.select_profile(profiles[0])
 
-        # Get shot data
-        shot = await client.get_shot(1)
-        print(f"Shot duration: {shot.duration}ms")
+    # Get shot data
+    shot = await client.get_shot(1)
+    print(f"Shot duration: {shot.duration}ms")
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+  asyncio.run(main())
 ```
 
 ### More Detailed Examples
 #### Working with Profiles
+
 ```python
-from gaggiuino import GaggiuinoAPI
+from gaggiuino_api import GaggiuinoAPI
+
 
 async def profile_management():
-    async with GaggiuinoAPI(base_url="http://custom.gaggiuino.local") as client:
-        # Get all profiles
-        profiles = await client.get_profiles()
+  async with GaggiuinoAPI(base_url="http://custom.gaggiuino.local") as client:
+    # Get all profiles
+    profiles = await client.get_profiles()
 
-        # Print profile details
-        for profile in profiles:
-            print(f"Profile: {profile.name} (ID: {profile.id})")
-            print(f"Water Temperature: {profile.waterTemperature}°C")
+    # Print profile details
+    for profile in profiles:
+      print(f"Profile: {profile.name} (ID: {profile.id})")
+      print(f"Water Temperature: {profile.waterTemperature}°C")
 
-            # Print phases
-            for phase in profile.phases:
-                print(f"Phase Type: {phase.type.type}")
-                print(f"Restriction: {phase.restriction}")
+      # Print phases
+      for phase in profile.phases:
+        print(f"Phase Type: {phase.type.type}")
+        print(f"Restriction: {phase.restriction}")
 ```
 
 #### Retrieving Shot Data
+
 ```python
-from gaggiuino import GaggiuinoAPI
+from gaggiuino_api import GaggiuinoAPI
+
 
 async def analyze_shot():
-    async with GaggiuinoAPI() as client:
-        shot = await client.get_shot(1)
+  async with GaggiuinoAPI() as client:
+    shot = await client.get_shot(1)
 
-        # Access shot metrics
-        print(f"Shot ID: {shot.id}")
-        print(f"Duration: {shot.duration}ms")
-        print(f"Timestamp: {shot.timestamp}")
+    # Access shot metrics
+    print(f"Shot ID: {shot.id}")
+    print(f"Duration: {shot.duration}ms")
+    print(f"Timestamp: {shot.timestamp}")
 
-        # Access datapoints
-        pressure_points = shot.datapoints.pressure
-        flow_points = shot.datapoints.pumpFlow
-        temperature_points = shot.datapoints.temperature
+    # Access datapoints
+    pressure_points = shot.datapoints.pressure
+    flow_points = shot.datapoints.pumpFlow
+    temperature_points = shot.datapoints.temperature
 ```
 
 ### Troubleshooting
 #### Connection Issues
 - Problem: Unable to connect to Gaggiuino device
   ```python
-  from gaggiuino import GaggiuinoAPI, GaggiuinoConnectionError
+  from gaggiuino_api import GaggiuinoAPI, GaggiuinoConnectionError
 
   async def main():
       try:
@@ -103,7 +112,7 @@ async def analyze_shot():
 #### Endpoint Not Found
 - Problem: API endpoint returns 404
   ```python
-  from gaggiuino import GaggiuinoAPI, GaggiuinoEndpointNotFoundError
+  from gaggiuino_api import GaggiuinoAPI, GaggiuinoEndpointNotFoundError
 
   async def main():
       try:

@@ -10,13 +10,13 @@ from urllib import parse as urllib_parse
 from aiohttp import ClientSession
 from aiohttp.client_exceptions import ClientConnectionError
 
-from gaggiuino.const import DEFAULT_BASE_URL
-from gaggiuino.exceptions import (
+from gaggiuino_api.const import DEFAULT_BASE_URL
+from gaggiuino_api.exceptions import (
     GaggiuinoError,
     GaggiuinoConnectionError,
     GaggiuinoEndpointNotFoundError,
 )
-from gaggiuino.models import GaggiuinoProfile, GaggiuinoShot
+from gaggiuino_api.models import GaggiuinoProfile, GaggiuinoShot
 
 _LOGGER = logging.getLogger(__name__)
 
