@@ -23,7 +23,7 @@ It leverages modern Python features and async/await patterns to provide non-bloc
 
 ### Installation
 ```bash
-pip install gaggiuino
+pip install gaggiuino_api
 ```
 
 ### Quick Start
