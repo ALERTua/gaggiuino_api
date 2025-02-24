@@ -30,6 +30,7 @@ class GaggiuinoClient:
         self.headers = {}
         self.post_headers = {"Content-Type": "application/x-www-form-urlencoded"}
         self.close_session = False
+        self.timeout = 15
 
     async def __aenter__(self) -> "GaggiuinoClient":
         await self.connect()
@@ -73,6 +74,8 @@ class GaggiuinoClient:
                 return response.status == 200
         except ClientConnectionError as err:
             raise GaggiuinoConnectionError("Connection failed") from err
+        except GaggiuinoEndpointNotFoundError as err:
+            raise GaggiuinoEndpointNotFoundError from err
         except Exception as err:
             raise GaggiuinoError("Unhandled exception") from err
 
@@ -91,6 +94,7 @@ class GaggiuinoClient:
                 url,
                 headers=self.headers,
                 params=params,
+                timeout=self.timeout,
             ) as response:
                 if response.status == 404:
                     raise GaggiuinoEndpointNotFoundError("endpoint not found")
@@ -98,6 +102,8 @@ class GaggiuinoClient:
                 return await response.json()
         except ClientConnectionError as err:
             raise GaggiuinoConnectionError("Connection failed") from err
+        except GaggiuinoEndpointNotFoundError as err:
+            raise GaggiuinoEndpointNotFoundError from err
         except Exception as err:
             raise GaggiuinoError("Unhandled exception") from err
 
@@ -120,7 +126,12 @@ class GaggiuinoAPI(GaggiuinoClient):
 
     async def _select_profile(self, profile_id: int) -> bool:
         url = f"{self.api_base}/profile-select/{profile_id}"
-        return await self.post(url)
+        try:
+            return await self.post(url)
+        except GaggiuinoEndpointNotFoundError as err:
+            raise GaggiuinoEndpointNotFoundError("Profile not found") from err
+        except Exception as err:
+            raise GaggiuinoError("Unhandled exception") from err
 
     async def select_profile(self, profile: GaggiuinoProfile | int) -> bool:
         profile_id = profile
@@ -131,7 +142,13 @@ class GaggiuinoAPI(GaggiuinoClient):
 
     async def get_shot(self, shot_id: int):
         url = f"{self.api_base}/shots/{shot_id}"
-        shot = await self.get(url)
+        try:
+            shot = await self.get(url)
+        except GaggiuinoEndpointNotFoundError as err:
+            raise GaggiuinoEndpointNotFoundError("Shot not found") from err
+        except Exception as err:
+            raise GaggiuinoError("Unhandled exception") from err
+
         return GaggiuinoShot(**shot)
 
 
