@@ -12,6 +12,7 @@ from .models import (
     GaggiuinoProfilePhase,
     GaggiuinoProfilePhaseTarget,
     GaggiuinoProfilePhaseStopCondition,
+    GaggiuinoStatus,
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     'GaggiuinoProfilePhase',
     'GaggiuinoProfilePhaseTarget',
     'GaggiuinoProfilePhaseStopCondition',
+    'GaggiuinoStatus',
 ]

@@ -1,6 +1,7 @@
 """Gaggiuino API Wrapper."""
 
 from __future__ import annotations
+import sys
 
 import asyncio
 import logging
@@ -16,7 +17,10 @@ from gaggiuino_api.exceptions import (
     GaggiuinoConnectionError,
     GaggiuinoEndpointNotFoundError,
 )
-from gaggiuino_api.models import GaggiuinoProfile, GaggiuinoShot
+from gaggiuino_api.models import GaggiuinoProfile, GaggiuinoShot, GaggiuinoStatus
+
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -151,9 +155,22 @@ class GaggiuinoAPI(GaggiuinoClient):
 
         return GaggiuinoShot(**shot)
 
+    async def get_status(self) -> GaggiuinoStatus | None:
+        url = f"{self.api_base}/system/status"
+        try:
+            status: list[dict[str, Any]] = await self.get(url)
+        except GaggiuinoEndpointNotFoundError as err:
+            raise GaggiuinoEndpointNotFoundError("Shot not found") from err
+        except Exception as err:
+            raise GaggiuinoError("Unhandled exception") from err
+
+        if status:
+            return GaggiuinoStatus(**status[0])
+
 
 async def _main():
     async with GaggiuinoAPI() as gapi:
+        _status = await gapi.get_status()
         _profiles = await gapi.get_profiles()
         _shot = await gapi.get_shot(1)
     pass
