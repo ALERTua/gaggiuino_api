@@ -7,6 +7,8 @@ Gaggiuino REST API Wrapper for Python
 ---------------------------
 Repository: https://github.com/ALERTua/gaggiuino_api
 
+Changelog: https://github.com/ALERTua/gaggiuino_api/releases
+
 PyPi: https://pypi.org/project/gaggiuino_api/
 
 Home Assistant HACS Integration: https://github.com/ALERTua/hass-gaggiuino
@@ -38,6 +40,10 @@ from gaggiuino_api import GaggiuinoAPI
 
 async def main():
   async with GaggiuinoAPI() as client:
+    # Get the status
+    status = await client.get_status()
+    print(f"Status: {status}")
+
     # Get all available profiles
     profiles = await client.get_profiles()
 

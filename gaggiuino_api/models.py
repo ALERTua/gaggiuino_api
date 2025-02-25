@@ -242,3 +242,34 @@ class GaggiuinoShot:
     id: int
     profile: GaggiuinoProfile
     timestamp: int
+
+
+@dataclass
+class GaggiuinoStatus:
+    """
+    {
+      "upTime": "89107",
+      "profileId": "7",
+      "profileName": "OFF",
+      "targetTemperature": "15.000000",
+      "temperature": "22.500000",
+      "pressure": "-0.028054",
+      "waterLevel": "100",
+      "weight": "0.000000",
+      "brewSwitchState": "false",
+      "steamSwitchState": "false"
+    }
+
+    """
+
+    upTime: int
+    profileId: int
+    profileName: str
+    targetTemperature: float
+    temperature: float
+    temperature: float
+    pressure: float
+    waterLevel: int
+    weight: float
+    brewSwitchState: bool
+    steamSwitchState: bool
