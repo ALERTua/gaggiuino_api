@@ -50,8 +50,10 @@ async def test_select_profile(api_client):
     profile_off_name = os.getenv('GAGGIUINO_PROFILE_OFF', 'OFF')
     profile_test_name = os.getenv('GAGGIUINO_PROFILE_TEST', 'test')
 
-    profile_off = [_ for _ in profiles if _.name == profile_off_name][0]
-    profile_test = [_ for _ in profiles if _.name == profile_test_name][0]
+    profile_off = next((_ for _ in profiles if _.name == profile_off_name), None)
+    assert profile_off, "Cannot check withoout an OFF profile"
+    profile_test = next((_ for _ in profiles if _.name == profile_test_name), None)
+    assert profile_off, "Cannot check withoout a test profile"
 
     # Test with profile object
     result = await api_client.select_profile(profile_test)
