@@ -8,6 +8,7 @@ from gaggiuino_api import (
     GaggiuinoEndpointNotFoundError,
     GaggiuinoProfile,
     GaggiuinoShot,
+    GaggiuinoStatus,
 )
 from gaggiuino_api.const import DEFAULT_BASE_URL
 
@@ -89,3 +90,10 @@ async def test_invalid_shot_request(api_client):
     """Test requesting an invalid shot ID."""
     with pytest.raises(GaggiuinoEndpointNotFoundError):
         await api_client.get_shot(99999)  # Using an arbitrary large ID
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_get_status(api_client):
+    """Test getting profiles from the API."""
+    status = await api_client.get_status()
+    assert isinstance(status, GaggiuinoStatus)

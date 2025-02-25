@@ -121,12 +121,48 @@ class GaggiuinoAPI(GaggiuinoClient):
     ) -> None:
         super().__init__(base_url=base_url, session=session)
         self.api_base = f"{self.base_url}/api"
+        self._profile: GaggiuinoProfile | None = None
+        self._profiles: list[GaggiuinoProfile] | None = None
+        self._status: GaggiuinoStatus | None = None
 
-    async def get_profiles(self) -> list[GaggiuinoProfile]:
+    @property
+    def profile(self):
+        if self._status is None:
+            _LOGGER.debug(
+                "Cannot get the currently selected profile. Use get_status() first."
+            )
+            return None
+
+        self._profile = GaggiuinoProfile(
+            id=self._status.profileId, name=self._status.profileName
+        )
+        if self._profiles:
+            for profile in self._profiles:
+                if profile.id == self._status.profileId:
+                    self._profile = profile
+                    break
+
+        _LOGGER.debug("Current profile: %s", self._profile)
+        return self._profile
+
+    @profile.setter
+    async def profile(self, profile: GaggiuinoProfile | int):
+        if await self._select_profile(profile):
+            self._profile = profile
+
+    async def get_profiles(self) -> list[GaggiuinoProfile] | None:
         url = f"{self.api_base}/profiles/all"
-        profiles: list[dict[str, Any]] = await self.get(url)
-        output = [GaggiuinoProfile(**_) for _ in profiles]
-        return output
+        try:
+            profiles: list[dict[str, Any]] = await self.get(url)
+        except GaggiuinoEndpointNotFoundError as err:
+            raise GaggiuinoEndpointNotFoundError("Profile not found") from err
+        except Exception as err:
+            raise GaggiuinoError("Unhandled exception") from err
+        if profiles is None:
+            return None
+
+        self._profiles = [GaggiuinoProfile(**_) for _ in profiles]
+        return self._profiles
 
     async def _select_profile(self, profile_id: int) -> bool:
         url = f"{self.api_base}/profile-select/{profile_id}"
@@ -165,7 +201,8 @@ class GaggiuinoAPI(GaggiuinoClient):
             raise GaggiuinoError("Unhandled exception") from err
 
         if status:
-            return GaggiuinoStatus(**status[0])
+            self._status = GaggiuinoStatus(**status[0])
+            return self._status
 
 
 async def _main():
