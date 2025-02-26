@@ -140,6 +140,7 @@ class GaggiuinoProfile:
 
     id: int
     name: str
+    selected: bool | None = None
     globalStopConditions: dict[str, Any] | None = None
     phases: list[GaggiuinoProfilePhase] | None = None
     recipe: dict[str, Any] | None = None

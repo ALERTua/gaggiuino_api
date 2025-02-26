@@ -38,6 +38,7 @@ async def test_get_profiles(api_client):
         assert isinstance(profiles[0], GaggiuinoProfile)
         assert all(isinstance(profile, GaggiuinoProfile) for profile in profiles)
         assert all(hasattr(profile, 'id') for profile in profiles)
+        assert all(getattr(profile, 'id', None) is not None for profile in profiles)
         assert all(hasattr(profile, 'name') for profile in profiles)
         assert all(hasattr(profile, 'phases') for profile in profiles)
 
