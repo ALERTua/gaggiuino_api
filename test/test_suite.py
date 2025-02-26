@@ -10,6 +10,7 @@ from gaggiuino_api import (
     GaggiuinoShot,
     GaggiuinoStatus,
 )
+from gaggiuino_api.models import GaggiuinoLatestShotResult
 from gaggiuino_api.const import DEFAULT_BASE_URL
 
 pytest_plugins = ('pytest_asyncio',)
@@ -66,17 +67,6 @@ async def test_select_profile(api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_get_shot(api_client):
-    """Test getting shot data."""
-    # Try to get the most recent shot (ID 1)
-    shot_data = await api_client.get_shot(1)
-    if shot_data is None:
-        pytest.skip("No shot data available for testing")
-
-    assert isinstance(shot_data, GaggiuinoShot)
-
-
-@pytest.mark.asyncio(loop_scope="session")
 async def test_invalid_profile_selection(api_client):
     """Test selecting an invalid profile ID."""
     with pytest.raises(
@@ -97,3 +87,17 @@ async def test_get_status(api_client):
     """Test getting profiles from the API."""
     status = await api_client.get_status()
     assert isinstance(status, GaggiuinoStatus)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_get_shot(api_client):
+    """Test getting the latst shot id."""
+    latest_shot_id = await api_client.get_latest_shot_id()
+    assert isinstance(latest_shot_id, GaggiuinoLatestShotResult)
+    latest_shot_id = latest_shot_id.lastShotId
+
+    shot_data = await api_client.get_shot(latest_shot_id)
+    if shot_data is None:
+        pytest.skip("No shot data available for testing")
+
+    assert isinstance(shot_data, GaggiuinoShot)
