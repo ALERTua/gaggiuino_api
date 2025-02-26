@@ -5,7 +5,7 @@ import sys
 
 import asyncio
 import logging
-from typing import Type, Any
+from typing import Type, Any, Literal
 from urllib import parse as urllib_parse
 
 from aiohttp import ClientSession
@@ -17,7 +17,12 @@ from gaggiuino_api.exceptions import (
     GaggiuinoConnectionError,
     GaggiuinoEndpointNotFoundError,
 )
-from gaggiuino_api.models import GaggiuinoProfile, GaggiuinoShot, GaggiuinoStatus
+from gaggiuino_api.models import (
+    GaggiuinoProfile,
+    GaggiuinoShot,
+    GaggiuinoStatus,
+    GaggiuinoLatestShotResult,
+)
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -180,7 +185,7 @@ class GaggiuinoAPI(GaggiuinoClient):
 
         return await self._select_profile(profile_id=profile_id)
 
-    async def get_shot(self, shot_id: int):
+    async def _get_shot(self, shot_id: int | Literal["latest"]) -> dict:
         url = f"{self.api_base}/shots/{shot_id}"
         try:
             shot = await self.get(url)
@@ -188,6 +193,14 @@ class GaggiuinoAPI(GaggiuinoClient):
             raise GaggiuinoEndpointNotFoundError("Shot not found") from err
         except Exception as err:
             raise GaggiuinoError("Unhandled exception") from err
+
+        return shot
+
+    async def get_shot(self, shot_id: int) -> GaggiuinoShot | None:
+        shot = await self._get_shot(shot_id)
+        if shot is None:
+            _LOGGER.debug("Couldn't retrieve shot %s", shot_id)
+            return None
 
         return GaggiuinoShot(**shot)
 
@@ -204,12 +217,22 @@ class GaggiuinoAPI(GaggiuinoClient):
             self._status = GaggiuinoStatus(**status[0])
             return self._status
 
+    async def get_latest_shot_id(self):
+        latest_shots = await self._get_shot("latest")
+        if latest_shots is None:
+            _LOGGER.debug("Couldn't retrieve the latest shot")
+            return None
+
+        return GaggiuinoLatestShotResult(**latest_shots[0])
+
 
 async def _main():
     async with GaggiuinoAPI() as gapi:
         _status = await gapi.get_status()
         _profiles = await gapi.get_profiles()
-        _shot = await gapi.get_shot(1)
+        _latest_shot_id = await gapi.get_latest_shot_id()
+        _latest_shot_id = _latest_shot_id.lastShotId
+        _shot = await gapi.get_shot(_latest_shot_id)
     pass
 
 

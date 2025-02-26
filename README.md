@@ -90,10 +90,12 @@ from gaggiuino_api import GaggiuinoAPI
 
 async def analyze_shot():
   async with GaggiuinoAPI() as client:
-    shot = await client.get_shot(1)
+    latest_shot_id_result = await client.get_latest_shot_id()
+    latest_shot_id = latest_shot_id_result.lastShotId
+    shot = await client.get_shot(latest_shot_id)
 
     # Access shot metrics
-    print(f"Shot ID: {shot.id}")
+    print(f"Latest Shot ID: {latest_shot_id}")
     print(f"Duration: {shot.duration}ms")
     print(f"Timestamp: {shot.timestamp}")
 

@@ -273,3 +273,16 @@ class GaggiuinoStatus:
     weight: float
     brewSwitchState: bool
     steamSwitchState: bool
+
+
+@dataclass
+class GaggiuinoLatestShotResult:
+    """
+    [
+        {
+            "lastShotId": "100"
+        }
+    ]
+    """
+
+    lastShotId: int
