@@ -275,7 +275,7 @@ class GaggiuinoStatus:
     steamSwitchState: bool
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoLatestShotResult:
     """
     [
