@@ -132,22 +132,23 @@ class GaggiuinoAPI(GaggiuinoClient):
 
     @property
     def profile(self):
-        if self._status is None:
-            _LOGGER.debug(
-                "Cannot get the currently selected profile. Use get_status() first."
+        self._profile = None
+        if self._status is not None:
+            self._profile = GaggiuinoProfile(
+                id=self._status.profileId,
+                name=self._status.profileName,
+                selected=True,
             )
-            return None
-
-        self._profile = GaggiuinoProfile(
-            id=self._status.profileId, name=self._status.profileName
-        )
-        if self._profiles:
-            for profile in self._profiles:
-                if profile.id == self._status.profileId:
-                    self._profile = profile
-                    break
-
+        elif self._profiles is not None:
+            self._profile = next(
+                (profile for profile in self._profiles if profile.selected),
+                None,
+            )
         _LOGGER.debug("Current profile: %s", self._profile)
+        if self._profile is None:
+            _LOGGER.debug(
+                "Cannot get the currently selected profile. Use get_status() or get_profiles() first."
+            )
         return self._profile
 
     @profile.setter
