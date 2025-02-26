@@ -244,7 +244,7 @@ class GaggiuinoShot:
     timestamp: int
 
 
-@dataclass(frozen=True)
+@dataclass
 class GaggiuinoStatus:
     """
     {

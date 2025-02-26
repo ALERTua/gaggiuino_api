@@ -230,8 +230,8 @@ async def _main():
     async with GaggiuinoAPI() as gapi:
         _status = await gapi.get_status()
         _profiles = await gapi.get_profiles()
-        _latest_shot_id = await gapi.get_latest_shot_id()
-        _latest_shot_id = _latest_shot_id.lastShotId
+        _latest_shot_id_result = await gapi.get_latest_shot_id()
+        _latest_shot_id = _latest_shot_id_result.lastShotId
         _shot = await gapi.get_shot(_latest_shot_id)
     pass
 
