@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoShotDataPoints:
     pressure: list[int] | None = None
     pumpFlow: list[int] | None = None
@@ -19,7 +19,7 @@ class GaggiuinoShotDataPoints:
     weightFlow: list[int] | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoProfilePhaseStopCondition:
     """
     'stopConditions': {
@@ -34,7 +34,7 @@ class GaggiuinoProfilePhaseStopCondition:
     weight: float | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoProfilePhaseTarget:
     """
     'target': {
@@ -49,7 +49,7 @@ class GaggiuinoProfilePhaseTarget:
     time: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoProfileType:
     """
     'type': 'FLOW'
@@ -58,7 +58,7 @@ class GaggiuinoProfileType:
     type: Literal['FLOW', 'PRESSURE']
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoProfilePhase:
     """
     {
@@ -84,7 +84,7 @@ class GaggiuinoProfilePhase:
     type: GaggiuinoProfileType
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoProfile:
     """
     'profile': {
@@ -146,7 +146,7 @@ class GaggiuinoProfile:
     waterTemperature: int | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoShot:
     """
     {
@@ -244,7 +244,7 @@ class GaggiuinoShot:
     timestamp: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoStatus:
     """
     {
