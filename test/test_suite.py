@@ -16,8 +16,8 @@ from gaggiuino_api.const import DEFAULT_BASE_URL
 pytest_plugins = ('pytest_asyncio',)
 
 
-@pytest_asyncio.fixture(loop_scope="session")
-async def api_client():
+@pytest_asyncio.fixture(loop_scope="session", name="api_client")
+async def _api_client():
     """Fixture to provide an API client."""
     async with GaggiuinoAPI(base_url=DEFAULT_BASE_URL) as gapi:
         yield gapi
