@@ -88,6 +88,7 @@ async def test_get_status(api_client):
     """Test getting profiles from the API."""
     status = await api_client.get_status()
     assert isinstance(status, GaggiuinoStatus)
+    assert isinstance(status.brewSwitchState, bool)
 
 
 @pytest.mark.asyncio(loop_scope="session")
