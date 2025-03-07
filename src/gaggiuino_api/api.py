@@ -215,7 +215,7 @@ class GaggiuinoAPI(GaggiuinoClient):
             raise GaggiuinoError("Unhandled exception") from err
 
         if status:
-            self._status = GaggiuinoStatus(**status[0])
+            self._status = GaggiuinoStatus.from_dict(status[0])
             return self._status
 
     async def get_latest_shot_id(self):

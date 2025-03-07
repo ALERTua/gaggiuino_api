@@ -3,6 +3,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
+from gaggiuino_api.tools import strtobool
 
 
 @dataclass(frozen=True)
@@ -268,12 +269,26 @@ class GaggiuinoStatus:
     profileName: str
     targetTemperature: float
     temperature: float
-    temperature: float
     pressure: float
     waterLevel: int
     weight: float
     brewSwitchState: bool
     steamSwitchState: bool
+
+    @staticmethod
+    def from_dict(data: dict):
+        return GaggiuinoStatus(
+            upTime=int(data['upTime']),
+            profileId=int(data['profileId']),
+            profileName=data['profileName'],
+            targetTemperature=float(data['targetTemperature']),
+            temperature=float(data['temperature']),
+            pressure=float(data['pressure']),
+            waterLevel=int(data['waterLevel']),
+            weight=float(data['weight']),
+            brewSwitchState=strtobool(data['brewSwitchState']),
+            steamSwitchState=strtobool(data['steamSwitchState']),
+        )
 
 
 @dataclass(frozen=True)
