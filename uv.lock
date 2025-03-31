@@ -161,7 +161,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "aiohttp", specifier = ">=3.11.12" }]
+requires-dist = [{ name = "aiohttp", specifier = ">=3.11.14" }]
 
 [package.metadata.requires-dev]
 dev = [
