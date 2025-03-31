@@ -70,10 +70,9 @@ async def test_select_profile(api_client):
 @pytest.mark.asyncio(loop_scope="session")
 async def test_invalid_profile_selection(api_client):
     """Test selecting an invalid profile ID."""
-    with pytest.raises(
-        GaggiuinoEndpointNotFoundError
-    ):  # Will raise when profile not found
-        await api_client.select_profile(99999)  # Using an arbitrary large ID
+    assert (
+        await api_client.select_profile(99999) is False
+    )  # Using an arbitrary large ID
 
 
 @pytest.mark.asyncio(loop_scope="session")
