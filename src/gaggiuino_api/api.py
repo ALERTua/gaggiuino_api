@@ -79,7 +79,27 @@ class GaggiuinoClient:
             ) as response:
                 if response.status == 404:
                     raise GaggiuinoEndpointNotFoundError("endpoint not found")
-                await response.text(encoding="utf-8")
+                return response.status == 200
+        except ClientConnectionError as err:
+            raise GaggiuinoConnectionError("Connection failed") from err
+        except GaggiuinoEndpointNotFoundError as err:
+            raise GaggiuinoEndpointNotFoundError from err
+        except Exception as err:
+            raise GaggiuinoError("Unhandled exception") from err
+
+    async def delete(self, url: str, params: dict = None) -> bool:
+        assert self.session is not None, "Session not created"
+
+        data = urllib_parse.urlencode(params) if params is not None else None
+
+        try:
+            async with self.session.delete(
+                url,
+                data=data,
+                headers=self.post_headers,
+            ) as response:
+                if response.status == 404:
+                    raise GaggiuinoEndpointNotFoundError("endpoint not found")
                 return response.status == 200
         except ClientConnectionError as err:
             raise GaggiuinoConnectionError("Connection failed") from err
@@ -186,6 +206,22 @@ class GaggiuinoAPI(GaggiuinoClient):
 
         return await self._select_profile(profile_id=profile_id)
 
+    async def _delete_profile(self, profile_id: int) -> bool:
+        url = f"{self.api_base}/profile-select/{profile_id}"
+        try:
+            return await self.delete(url)
+        except GaggiuinoEndpointNotFoundError as err:
+            raise GaggiuinoEndpointNotFoundError("Profile not found") from err
+        except Exception as err:
+            raise GaggiuinoError("Unhandled exception") from err
+
+    async def delete_profile(self, profile: GaggiuinoProfile | int) -> bool:
+        profile_id = profile
+        if isinstance(profile, GaggiuinoProfile):
+            profile_id = profile.id
+
+        return await self._delete_profile(profile_id=profile_id)
+
     async def _get_shot(self, shot_id: int | Literal["latest"]) -> dict:
         url = f"{self.api_base}/shots/{shot_id}"
         try:
@@ -234,6 +270,8 @@ async def _main():
         _latest_shot_id_result = await gapi.get_latest_shot_id()
         _latest_shot_id = _latest_shot_id_result.lastShotId
         _shot = await gapi.get_shot(_latest_shot_id)
+        _test_profile = next((_ for _ in _profiles if _.name == 'test (copy)'), None)
+        _deletion = await gapi.delete_profile(_test_profile)
     pass
 
 
