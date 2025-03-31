@@ -102,3 +102,6 @@ async def test_get_shot(api_client):
         pytest.skip("No shot data available for testing")
 
     assert isinstance(shot_data, GaggiuinoShot)
+
+
+# TODO: mock profile deletion
