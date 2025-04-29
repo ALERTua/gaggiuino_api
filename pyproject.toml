@@ -1,6 +1,6 @@
 [project]
 name = "gaggiuino_api"
-version = "0.1.9"
+version = "0.1.10"
 description = "Gaggiuino REST Api Wrapper"
 readme = "README.md"
 authors = [
@@ -8,7 +8,7 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "aiohttp>=3.11.18",
+    "aiohttp",
 ]
 packages = ["gaggiuino_api"]
 
