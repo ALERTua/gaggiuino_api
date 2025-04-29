@@ -85,7 +85,9 @@ class GaggiuinoClient:
         except GaggiuinoEndpointNotFoundError as err:
             raise GaggiuinoEndpointNotFoundError from err
         except Exception as err:
-            raise GaggiuinoError("Unhandled exception") from err
+            raise GaggiuinoError(
+                f"Unhandled exception: {type(err)}: {str(err)}"
+            ) from err
 
     async def delete(self, url: str, params: dict = None) -> bool:
         assert self.session is not None, "Session not created"
@@ -106,7 +108,9 @@ class GaggiuinoClient:
         except GaggiuinoEndpointNotFoundError as err:
             raise GaggiuinoEndpointNotFoundError from err
         except Exception as err:
-            raise GaggiuinoError("Unhandled exception") from err
+            raise GaggiuinoError(
+                f"Unhandled exception: {type(err)}: {str(err)}"
+            ) from err
 
     async def get(
         self,
@@ -134,7 +138,9 @@ class GaggiuinoClient:
         except GaggiuinoEndpointNotFoundError as err:
             raise GaggiuinoEndpointNotFoundError from err
         except Exception as err:
-            raise GaggiuinoError("Unhandled exception") from err
+            raise GaggiuinoError(
+                f"Unhandled exception: {type(err)}: {str(err)}"
+            ) from err
 
 
 class GaggiuinoAPI(GaggiuinoClient):
@@ -183,7 +189,9 @@ class GaggiuinoAPI(GaggiuinoClient):
         except GaggiuinoEndpointNotFoundError as err:
             raise GaggiuinoEndpointNotFoundError("Profile not found") from err
         except Exception as err:
-            raise GaggiuinoError("Unhandled exception") from err
+            raise GaggiuinoError(
+                f"Unhandled exception: {type(err)}: {str(err)}"
+            ) from err
         if profiles is None:
             return None
 
@@ -197,7 +205,9 @@ class GaggiuinoAPI(GaggiuinoClient):
         except GaggiuinoEndpointNotFoundError as err:
             raise GaggiuinoEndpointNotFoundError("Profile not found") from err
         except Exception as err:
-            raise GaggiuinoError("Unhandled exception") from err
+            raise GaggiuinoError(
+                f"Unhandled exception: {type(err)}: {str(err)}"
+            ) from err
 
     async def select_profile(self, profile: GaggiuinoProfile | int) -> bool:
         profile_id = profile
@@ -213,7 +223,9 @@ class GaggiuinoAPI(GaggiuinoClient):
         except GaggiuinoEndpointNotFoundError as err:
             raise GaggiuinoEndpointNotFoundError("Profile not found") from err
         except Exception as err:
-            raise GaggiuinoError("Unhandled exception") from err
+            raise GaggiuinoError(
+                f"Unhandled exception: {type(err)}: {str(err)}"
+            ) from err
 
     async def delete_profile(self, profile: GaggiuinoProfile | int) -> bool:
         profile_id = profile
@@ -229,7 +241,9 @@ class GaggiuinoAPI(GaggiuinoClient):
         except GaggiuinoEndpointNotFoundError as err:
             raise GaggiuinoEndpointNotFoundError("Shot not found") from err
         except Exception as err:
-            raise GaggiuinoError("Unhandled exception") from err
+            raise GaggiuinoError(
+                f"Unhandled exception: {type(err)}: {str(err)}"
+            ) from err
 
         return shot
 
@@ -248,11 +262,15 @@ class GaggiuinoAPI(GaggiuinoClient):
         except GaggiuinoEndpointNotFoundError as err:
             raise GaggiuinoEndpointNotFoundError("Shot not found") from err
         except Exception as err:
-            raise GaggiuinoError("Unhandled exception") from err
+            raise GaggiuinoError(
+                f"Unhandled exception: {type(err)}: {str(err)}"
+            ) from err
 
         if status:
             self._status = GaggiuinoStatus.from_dict(status[0])
             return self._status
+
+        return None
 
     async def get_latest_shot_id(self):
         latest_shots = await self._get_shot("latest")
