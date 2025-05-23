@@ -9,5 +9,9 @@ class GaggiuinoConnectionError(GaggiuinoError):
     """Gaggiuino connection error exception."""
 
 
+class GaggiuinoConnectionTimeoutError(GaggiuinoError):
+    """Gaggiuino connection error exception."""
+
+
 class GaggiuinoEndpointNotFoundError(GaggiuinoError):
     """Gaggiuino endpoint not found exception."""

@@ -16,6 +16,7 @@ from gaggiuino_api.exceptions import (
     GaggiuinoError,
     GaggiuinoConnectionError,
     GaggiuinoEndpointNotFoundError,
+    GaggiuinoConnectionTimeoutError,
 )
 from gaggiuino_api.models import (
     GaggiuinoProfile,
@@ -66,81 +67,57 @@ class GaggiuinoClient:
             self.session = None
             self.close_session = False
 
-    async def post(self, url: str, params: dict = None) -> bool:
+    async def _request(
+        self,
+        method: Literal["GET", "POST", "DELETE"],
+        url: str,
+        params: dict = None,
+        *,
+        json_response: bool = False,
+    ) -> Any:
+        """Shared request handler."""
         assert self.session is not None, "Session not created"
 
         data = urllib_parse.urlencode(params) if params is not None else None
+        headers = self.post_headers if method in ["POST", "DELETE"] else self.headers
 
         try:
-            async with self.session.post(
+            async with self.session.request(
+                method,
                 url,
                 data=data,
-                headers=self.post_headers,
+                headers=headers,
+                timeout=self.timeout,
             ) as response:
                 if response.status == 404:
                     raise GaggiuinoEndpointNotFoundError("endpoint not found")
-                return response.status == 200
+
+                if not json_response:
+                    return response.status == 200
+                return await response.json()
+
         except ClientConnectionError as err:
             raise GaggiuinoConnectionError("Connection failed") from err
-        except GaggiuinoEndpointNotFoundError as err:
-            raise GaggiuinoEndpointNotFoundError from err
+        except TimeoutError as err:
+            raise GaggiuinoConnectionTimeoutError from err
         except Exception as err:
             raise GaggiuinoError(
                 f"Unhandled exception: {type(err)}: {str(err)}"
             ) from err
+
+    async def post(self, url: str, params: dict = None) -> bool:
+        return await self._request("POST", url, params)
 
     async def delete(self, url: str, params: dict = None) -> bool:
-        assert self.session is not None, "Session not created"
-
-        data = urllib_parse.urlencode(params) if params is not None else None
-
-        try:
-            async with self.session.delete(
-                url,
-                data=data,
-                headers=self.post_headers,
-            ) as response:
-                if response.status == 404:
-                    raise GaggiuinoEndpointNotFoundError("endpoint not found")
-                return response.status == 200
-        except ClientConnectionError as err:
-            raise GaggiuinoConnectionError("Connection failed") from err
-        except GaggiuinoEndpointNotFoundError as err:
-            raise GaggiuinoEndpointNotFoundError from err
-        except Exception as err:
-            raise GaggiuinoError(
-                f"Unhandled exception: {type(err)}: {str(err)}"
-            ) from err
+        return await self._request("DELETE", url, params)
 
     async def get(
         self,
         url: str | None = None,
         params: dict[str, Any] = None,
     ) -> Any:
-        assert self.session is not None, "Session not created"
-
-        params = params or {}
         url = url or self.base_url
-
-        try:
-            async with self.session.get(
-                url,
-                headers=self.headers,
-                params=params,
-                timeout=self.timeout,
-            ) as response:
-                if response.status == 404:
-                    raise GaggiuinoEndpointNotFoundError("endpoint not found")
-
-                return await response.json()
-        except ClientConnectionError as err:
-            raise GaggiuinoConnectionError("Connection failed") from err
-        except GaggiuinoEndpointNotFoundError as err:
-            raise GaggiuinoEndpointNotFoundError from err
-        except Exception as err:
-            raise GaggiuinoError(
-                f"Unhandled exception: {type(err)}: {str(err)}"
-            ) from err
+        return await self._request("GET", url, params, json_response=True)
 
 
 class GaggiuinoAPI(GaggiuinoClient):
@@ -184,14 +161,7 @@ class GaggiuinoAPI(GaggiuinoClient):
 
     async def get_profiles(self) -> list[GaggiuinoProfile] | None:
         url = f"{self.api_base}/profiles/all"
-        try:
-            profiles: list[dict[str, Any]] = await self.get(url)
-        except GaggiuinoEndpointNotFoundError as err:
-            raise GaggiuinoEndpointNotFoundError("Profile not found") from err
-        except Exception as err:
-            raise GaggiuinoError(
-                f"Unhandled exception: {type(err)}: {str(err)}"
-            ) from err
+        profiles: list[dict[str, Any]] = await self.get(url)
         if profiles is None:
             return None
 
@@ -200,14 +170,7 @@ class GaggiuinoAPI(GaggiuinoClient):
 
     async def _select_profile(self, profile_id: int) -> bool:
         url = f"{self.api_base}/profile-select/{profile_id}"
-        try:
-            return await self.post(url)
-        except GaggiuinoEndpointNotFoundError as err:
-            raise GaggiuinoEndpointNotFoundError("Profile not found") from err
-        except Exception as err:
-            raise GaggiuinoError(
-                f"Unhandled exception: {type(err)}: {str(err)}"
-            ) from err
+        return await self.post(url)
 
     async def select_profile(self, profile: GaggiuinoProfile | int) -> bool:
         profile_id = profile
@@ -218,14 +181,7 @@ class GaggiuinoAPI(GaggiuinoClient):
 
     async def _delete_profile(self, profile_id: int) -> bool:
         url = f"{self.api_base}/profile-select/{profile_id}"
-        try:
-            return await self.delete(url)
-        except GaggiuinoEndpointNotFoundError as err:
-            raise GaggiuinoEndpointNotFoundError("Profile not found") from err
-        except Exception as err:
-            raise GaggiuinoError(
-                f"Unhandled exception: {type(err)}: {str(err)}"
-            ) from err
+        return await self.delete(url)
 
     async def delete_profile(self, profile: GaggiuinoProfile | int) -> bool:
         profile_id = profile
@@ -236,16 +192,7 @@ class GaggiuinoAPI(GaggiuinoClient):
 
     async def _get_shot(self, shot_id: int | Literal["latest"]) -> dict:
         url = f"{self.api_base}/shots/{shot_id}"
-        try:
-            shot = await self.get(url)
-        except GaggiuinoEndpointNotFoundError as err:
-            raise GaggiuinoEndpointNotFoundError("Shot not found") from err
-        except Exception as err:
-            raise GaggiuinoError(
-                f"Unhandled exception: {type(err)}: {str(err)}"
-            ) from err
-
-        return shot
+        return await self.get(url)
 
     async def get_shot(self, shot_id: int) -> GaggiuinoShot | None:
         shot = await self._get_shot(shot_id)
@@ -257,14 +204,7 @@ class GaggiuinoAPI(GaggiuinoClient):
 
     async def get_status(self) -> GaggiuinoStatus | None:
         url = f"{self.api_base}/system/status"
-        try:
-            status: list[dict[str, Any]] = await self.get(url)
-        except GaggiuinoEndpointNotFoundError as err:
-            raise GaggiuinoEndpointNotFoundError("Shot not found") from err
-        except Exception as err:
-            raise GaggiuinoError(
-                f"Unhandled exception: {type(err)}: {str(err)}"
-            ) from err
+        status: list[dict[str, Any]] = await self.get(url)
 
         if status:
             self._status = GaggiuinoStatus.from_dict(status[0])
