@@ -3,6 +3,7 @@ from .exceptions import (
     GaggiuinoError,
     GaggiuinoConnectionError,
     GaggiuinoEndpointNotFoundError,
+    GaggiuinoConnectionTimeoutError,
 )
 from .models import (
     GaggiuinoShot,
@@ -28,4 +29,5 @@ __all__ = [
     'GaggiuinoProfilePhaseTarget',
     'GaggiuinoProfilePhaseStopCondition',
     'GaggiuinoStatus',
+    'GaggiuinoConnectionTimeoutError',
 ]
