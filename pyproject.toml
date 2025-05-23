@@ -22,8 +22,8 @@ dev = [
     "pre-commit>=4.2.0",
     "pytest>=8.3.5",  # update this in tox.ini
     "pytest-asyncio>=0.26.0",  # update this in tox.ini
-    "ruff>=0.11.7",  # update this in tox.ini
-    "tox>=4.25.0",  # update this in tox.ini
+    "ruff>=0.11.11",  # update this in tox.ini
+    "tox>=4.26.0",  # update this in tox.ini
 ]
 
 [tool.ruff]
