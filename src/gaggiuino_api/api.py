@@ -100,6 +100,8 @@ class GaggiuinoClient:
             raise GaggiuinoConnectionError("Connection failed") from err
         except TimeoutError as err:
             raise GaggiuinoConnectionTimeoutError from err
+        except GaggiuinoEndpointNotFoundError as err:
+            raise err
         except Exception as err:
             raise GaggiuinoError(
                 f"Unhandled exception: {type(err)}: {str(err)}"
