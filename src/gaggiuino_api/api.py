@@ -40,7 +40,7 @@ class GaggiuinoClient:
         self.headers = {}
         self.post_headers = {"Content-Type": "application/x-www-form-urlencoded"}
         self.close_session = False
-        self.timeout = 15
+        self.timeout = 5
 
     async def __aenter__(self) -> "GaggiuinoClient":
         await self.connect()
