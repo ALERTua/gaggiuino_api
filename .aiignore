@@ -1,0 +1,12 @@
+.idea/
+logs/
+dist/
+build/
+.venv/
+venv/
+.env
+.dockerenv
+*.egg-info/
+*.egg
+*.spec
+.tox/
