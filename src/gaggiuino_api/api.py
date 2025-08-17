@@ -1,17 +1,18 @@
 """Gaggiuino API Wrapper."""
 
 from __future__ import annotations
-import sys
 
 import asyncio
 import logging
+import os
+import sys
 from typing import Type, Any, Literal
 from urllib import parse as urllib_parse
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientConnectionError
 
-from gaggiuino_api.const import DEFAULT_BASE_URL
+from gaggiuino_api.const import DEFAULT_BASE_URL, DEFAULT_TIMEOUT
 from gaggiuino_api.exceptions import (
     GaggiuinoError,
     GaggiuinoConnectionError,
@@ -24,8 +25,11 @@ from gaggiuino_api.models import (
     GaggiuinoStatus,
     GaggiuinoLatestShotResult,
 )
+from gaggiuino_api.tools import strtobool
 
-if sys.platform == 'win32':
+if sys.platform == 'win32' and strtobool(
+    os.getenv('GAGGIUINO_DISABLE_WIN_SELECTOR', 'False')
+):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,13 +38,27 @@ _LOGGER = logging.getLogger(__name__)
 class GaggiuinoClient:
     """Initialise a client to receive Server Sent Events (SSE)"""
 
-    def __init__(self, base_url: str = DEFAULT_BASE_URL, session: ClientSession = None):
+    def __init__(
+        self,
+        base_url: str = DEFAULT_BASE_URL,
+        session: ClientSession | None = None,
+        *,
+        timeout: float | ClientTimeout | None = None,
+    ):
         self.session = session
-        self.base_url = base_url
+        # Normalize base_url to avoid trailing slash duplication
+        self.base_url = base_url.rstrip("/")
         self.headers = {}
         self.post_headers = {"Content-Type": "application/x-www-form-urlencoded"}
         self.close_session = False
-        self.timeout = 5
+        if isinstance(timeout, ClientTimeout):
+            self._client_timeout = timeout
+            self.timeout = float(timeout.total or DEFAULT_TIMEOUT)
+        else:
+            self.timeout = (
+                float(timeout) if isinstance(timeout, (int, float)) else DEFAULT_TIMEOUT
+            )
+            self._client_timeout = ClientTimeout(total=self.timeout)
 
     async def __aenter__(self) -> "GaggiuinoClient":
         await self.connect()
@@ -58,7 +76,9 @@ class GaggiuinoClient:
         """Open the session"""
         if self.session is None:
             self.close_session = True
-            self.session = ClientSession(headers=self.headers)
+            self.session = ClientSession(
+                headers=self.headers, timeout=self._client_timeout
+            )
 
     async def disconnect(self) -> None:
         """Close the session if it was created internally"""
@@ -78,17 +98,23 @@ class GaggiuinoClient:
         """Shared request handler."""
         assert self.session is not None, "Session not created"
 
-        data = urllib_parse.urlencode(params) if params is not None else None
+        # Prepare request args
+        is_get = method == "GET"
+        data = None
+        if not is_get and params is not None:
+            data = urllib_parse.urlencode(params)
         headers = self.post_headers if method in ["POST", "DELETE"] else self.headers
 
         try:
             async with self.session.request(
                 method,
                 url,
+                params=params if is_get else None,
                 data=data,
                 headers=headers,
                 timeout=self.timeout,
             ) as response:
+                _LOGGER.debug("%s %s -> %s", method, url, response.status)
                 if response.status == 404:
                     raise GaggiuinoEndpointNotFoundError("endpoint not found")
 
@@ -98,7 +124,7 @@ class GaggiuinoClient:
 
         except ClientConnectionError as err:
             raise GaggiuinoConnectionError("Connection failed") from err
-        except TimeoutError as err:
+        except asyncio.TimeoutError as err:
             raise GaggiuinoConnectionTimeoutError from err
         except GaggiuinoEndpointNotFoundError as err:
             raise err
@@ -128,8 +154,9 @@ class GaggiuinoAPI(GaggiuinoClient):
         base_url: str = DEFAULT_BASE_URL,
         *,
         session: ClientSession | None = None,
+        timeout: float | ClientTimeout | None = None,
     ) -> None:
-        super().__init__(base_url=base_url, session=session)
+        super().__init__(base_url=base_url, session=session, timeout=timeout)
         self.api_base = f"{self.base_url}/api"
         self._profile: GaggiuinoProfile | None = None
         self._profiles: list[GaggiuinoProfile] | None = None
