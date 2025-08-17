@@ -77,14 +77,14 @@ Common Tasks Cheat Sheet
   - Run tox -e py313 and tox -e lint.
 - Update docs only:
   - Edit README.md and run lint to ensure no trailing whitespace or formatting nits.
+- If you need to add a new dependency, add it via `uv add`, and not via plain pyproject.toml edit.
 
 Windows Path and Shell Notes
 - Use backslashes in any paths you add to code snippets or scripts.
 - PowerShell semantics apply for shell command examples in repo scripts.
 
 Safety Checks Before Submit
-- Ensure: tox -e py313 passes; tox -e lint passes.
-- Ensure: no unintended file churn (especially in .egg-info/, dist/, images/).
+- Ensure: `tox` passes.
 - Ensure: changes are minimal and directly address the issue.
 
 Last updated: 2025-08-17
