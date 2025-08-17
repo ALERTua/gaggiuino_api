@@ -19,12 +19,11 @@ where = ["src"]
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.3.0",
     "pre-commit-uv>=4.1.4",
-    "pytest>=8.4.1", # update this in tox.ini
-    "pytest-asyncio>=1.1.0", # update this in tox.ini
-    "ruff>=0.12.9", # update this in tox.ini
-    "tox>=4.28.4", # update this in tox.ini
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "ruff>=0.12.9",
+    "tox-uv>=1.28.0",
 ]
 
 [tool.ruff]
