@@ -64,7 +64,6 @@ max-public-methods = 30
 "__init__.py" = ["E402"]
 
 [tool.pytest.ini_options]
-minversion = "8.4.1"
 addopts = "-ra -q"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
