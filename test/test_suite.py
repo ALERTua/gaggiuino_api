@@ -104,4 +104,28 @@ async def test_get_shot(api_client):
     assert isinstance(shot_data, GaggiuinoShot)
 
 
-# TODO: mock profile deletion
+@pytest.mark.asyncio(loop_scope="session")
+async def test_delete_profile_mock(api_client, monkeypatch):
+    """Mock profile deletion endpoint and verify behavior.
+
+    - Success when deleting a specific profile id via object and id.
+    - Failure for a non-existing/invalid id.
+    """
+    # Use a fake profile id; we won't hit the real network.
+    profile_id = 12345
+    profile = GaggiuinoProfile(id=profile_id, name="test")
+
+    async def _fake_delete(url: str, params: dict | None = None) -> bool:  # type: ignore[override]
+        # Ensure we call the expected endpoint
+        assert url.startswith(f"{api_client.api_base}/profile-select/")
+        # Simulate success only for the chosen profile id
+        return url.endswith(f"/{profile_id}")
+
+    # Patch the low-level delete used by delete_profile()
+    monkeypatch.setattr(api_client, "delete", _fake_delete)
+
+    # Deleting by profile object should succeed
+    assert await api_client.delete_profile(profile) is True
+
+    # Deleting by invalid id should fail
+    assert await api_client.delete_profile(99999) is False
