@@ -74,11 +74,12 @@ Common Tasks Cheat Sheet
 - Fix a bug:
   - Reproduce with a failing test when possible.
   - Implement the smallest fix.
-  - Run tox -e py313 and tox -e lint.
+  - Run `tox`.
 - Update docs only:
   - Edit README.md and run lint to ensure no trailing whitespace or formatting nits.
 - If you need to add a new dependency, add it via `uv add`, and not via plain pyproject.toml edit.
   - Don't forget to uv lock afterwards.
+- To check for outdated dependencies use `uv_outdated.cmd` which is found in PATH.
 
 Windows Path and Shell Notes
 - Use backslashes in any paths you add to code snippets or scripts.
