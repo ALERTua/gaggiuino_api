@@ -7,9 +7,9 @@ Repository Basics
 - Language/Version: Python 3.13
 - Python version always follows the one that Home Assistant project uses
 - Packaging: PEP 621 via pyproject.toml, src layout
+- Task runner: tox, pre-commit
 - Testing: pytest (asyncio auto mode)
-- Lint/Format: ruff (check + format)
-- Task runner: tox
+- Lint/Format: ruff (check + format) via pre-commit
 
 Core Principles
 1. Make the minimal change necessary to satisfy the issue.
@@ -32,7 +32,7 @@ How Junie Communicates (Process Contract)
 
 Coding Standards
 - Linting/formatting: ruff is the source of truth.
-  - Run: tox -e lint (ruff check .; ruff format --check .)
+  - Run: tox
   - If formatting changes are required, apply ruff format locally before committing (or propose the minimal needed edits).
 - Line length: 120 (pycodestyle), docstring code blocks line length: 88.
 - Quote style: preserve (do not churn quotes unnecessarily).
@@ -88,5 +88,9 @@ Windows Path and Shell Notes
 Safety Checks Before Submit
 - Ensure: `tox` passes.
 - Ensure: changes are minimal and directly address the issue.
+
+Responces guidelines
+- Be concise.
+- Use Markdown.
 
 Last updated: 2025-08-17
