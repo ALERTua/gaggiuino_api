@@ -78,6 +78,7 @@ Common Tasks Cheat Sheet
 - Update docs only:
   - Edit README.md and run lint to ensure no trailing whitespace or formatting nits.
 - If you need to add a new dependency, add it via `uv add`, and not via plain pyproject.toml edit.
+  - Don't forget to uv lock afterwards.
 
 Windows Path and Shell Notes
 - Use backslashes in any paths you add to code snippets or scripts.
