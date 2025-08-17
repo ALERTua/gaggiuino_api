@@ -10,26 +10,33 @@ requires-python = "==3.13.*"
 dependencies = [
     "aiohttp",
 ]
-packages = ["gaggiuino_api"]
 
+[tool.setuptools]
+package-dir = {"" = "src"}
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.2.0",
-    "pytest>=8.3.5",  # update this in tox.ini
-    "pytest-asyncio>=0.26.0",  # update this in tox.ini
-    "ruff>=0.11.11",  # update this in tox.ini
-    "tox>=4.26.0",  # update this in tox.ini
+    "pre-commit>=4.3.0",
+    "pre-commit-uv>=4.1.4",
+    "pytest>=8.4.1", # update this in tox.ini
+    "pytest-asyncio>=1.1.0", # update this in tox.ini
+    "ruff>=0.12.9", # update this in tox.ini
+    "tox>=4.28.4", # update this in tox.ini
 ]
 
 [tool.ruff]
-target-version = "py313"
-src = ["gaggiuino_api", "test"]
-extend-exclude = [".idea/"]
+src = ["src", "test"]
+extend-exclude = [
+    ".idea/",
+    "script/",
+    "dist",
+    "images",
+    ".tox",
+    ".venv",
+]
 extend-include = []
 output-format = "grouped"
 respect-gitignore = true
@@ -57,7 +64,7 @@ max-public-methods = 30
 "__init__.py" = ["E402"]
 
 [tool.pytest.ini_options]
-minversion = "8.3.4"
+minversion = "8.4.1"
 addopts = "-ra -q"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
