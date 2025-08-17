@@ -32,10 +32,10 @@ src = ["src", "test"]
 extend-exclude = [
     ".idea/",
     "script/",
-    "dist",
-    "images",
-    ".tox",
-    ".venv",
+    "dist/",
+    "images/",
+    ".tox/",
+    ".venv/",
 ]
 extend-include = []
 output-format = "grouped"
