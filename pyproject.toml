@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Alexey ALERT Rubashёff", email = "alexey.rubasheff@gmail.com" }
 ]
-requires-python = "==3.13.*"
+requires-python = ">=3.13.2"  # follow https://github.com/home-assistant/core/blob/dev/pyproject.toml
 dependencies = [
     "aiohttp",
 ]
