@@ -4,7 +4,7 @@ Purpose
 - This document defines how agents should work within this repository to make safe, minimal, and maintainable changes.
 
 Repository Basics
-- Language/Version: Python 3.13. Should be in sync with Home Assistant Core pyproject.toml
+- Language/Version: Python 3.13. Should be in sync with [Home Assistant Core pyproject.toml](https://github.com/home-assistant/core/blob/dev/pyproject.toml)
 - Python version always follows the one that Home Assistant project uses
 - Packaging: PEP 621 via pyproject.toml, src layout
 - Task runner: tox, pre-commit
@@ -17,7 +17,6 @@ Core Principles
 3. Prefer small, focused commits/patches.
 4. Match the existing style and tooling, but propose more modern tools if necessary.
 5. Keep cross-platform safety in mind.
-
 
 Coding Standards
 - Linting/formatting: ruff is the source of truth.
