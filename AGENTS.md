@@ -1,10 +1,10 @@
-Junie Guidelines for gaggiuino_api
+Guidelines for gaggiuino_api
 
 Purpose
-- This document defines how Junie should work within this repository to make safe, minimal, and maintainable changes.
+- This document defines how agents should work within this repository to make safe, minimal, and maintainable changes.
 
 Repository Basics
-- Language/Version: Python 3.13
+- Language/Version: Python 3.13. Should be in sync with Home Assistant Core pyproject.toml
 - Python version always follows the one that Home Assistant project uses
 - Packaging: PEP 621 via pyproject.toml, src layout
 - Task runner: tox, pre-commit
@@ -18,17 +18,6 @@ Core Principles
 4. Match the existing style and tooling, but propose more modern tools if necessary.
 5. Keep cross-platform safety in mind.
 
-How Junie Communicates (Process Contract)
-- Every response contains exactly two parts:
-  1) `UPDATE` block with:
-     - `PREVIOUS_STEP`: Brief summary of new outcomes and observations since last step.
-     - `PLAN`: Numbered list with progress marks: ✓ = done, * = in progress, ! = failed.
-     - `NEXT_STEP`: What you will do next.
-  2) An immediate tool call aligned with `NEXT_STEP`.
-- Use specialized tools (search_project, get_file_structure, open, create, search_replace, submit) instead of generic shell where possible.
-- Do not mix special tools and terminal commands in one call.
-- Do not create files outside the repository.
-- Use Windows backslashes in paths.
 
 Coding Standards
 - Linting/formatting: ruff is the source of truth.
@@ -93,4 +82,4 @@ Responces guidelines
 - Be concise.
 - Use Markdown.
 
-Last updated: 2025-08-17
+Last updated: 2025-10-08
