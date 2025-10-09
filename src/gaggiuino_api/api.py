@@ -183,11 +183,6 @@ class GaggiuinoAPI(GaggiuinoClient):
             )
         return self._profile
 
-    @profile.setter
-    async def profile(self, profile: GaggiuinoProfile | int):
-        if await self._select_profile(profile):
-            self._profile = profile
-
     async def get_profiles(self) -> list[GaggiuinoProfile] | None:
         url = f"{self.api_base}/profiles/all"
         profiles: list[dict[str, Any]] = await self.get(url)
