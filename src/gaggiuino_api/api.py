@@ -73,7 +73,7 @@ class GaggiuinoClient:
         await self.disconnect()
 
     async def connect(self) -> None:
-        """Open the session"""
+        """Open the session."""
         if self.session is None:
             self.close_session = True
             self.session = ClientSession(
@@ -81,7 +81,7 @@ class GaggiuinoClient:
             )
 
     async def disconnect(self) -> None:
-        """Close the session if it was created internally"""
+        """Close the session if it was created internally."""
         if self.session is not None and self.close_session:
             await self.session.close()
             self.session = None
@@ -95,7 +95,17 @@ class GaggiuinoClient:
         *,
         json_response: bool = False,
     ) -> Any:
-        """Shared request handler."""
+        """Shared request handler.
+
+        Args:
+            method: HTTP method to use
+            url: Target URL
+            params: Request parameters
+            json_response: Whether to parse response as JSON
+
+        Returns:
+            JSON data if json_response=True, otherwise bool indicating success
+        """
         assert self.session is not None, "Session not created"
 
         # Prepare request args
@@ -134,9 +144,27 @@ class GaggiuinoClient:
             ) from err
 
     async def post(self, url: str, params: dict = None) -> bool:
+        """Send POST request.
+
+        Args:
+            url: Target URL
+            params: POST parameters
+
+        Returns:
+            True if successful
+        """
         return await self._request("POST", url, params)
 
     async def delete(self, url: str, params: dict = None) -> bool:
+        """Send DELETE request.
+
+        Args:
+            url: Target URL
+            params: DELETE parameters
+
+        Returns:
+            True if successful
+        """
         return await self._request("DELETE", url, params)
 
     async def get(
@@ -144,6 +172,15 @@ class GaggiuinoClient:
         url: str | None = None,
         params: dict[str, Any] = None,
     ) -> Any:
+        """Send GET request.
+
+        Args:
+            url: Target URL (defaults to base_url)
+            params: Query parameters
+
+        Returns:
+            JSON response data
+        """
         url = url or self.base_url
         return await self._request("GET", url, params, json_response=True)
 
@@ -164,6 +201,11 @@ class GaggiuinoAPI(GaggiuinoClient):
 
     @property
     def profile(self) -> GaggiuinoProfile | None:
+        """Get currently selected profile.
+
+        Returns:
+            Currently selected profile or None
+        """
         self._profile = None
         if self._status is not None:
             self._profile = GaggiuinoProfile(
@@ -184,6 +226,11 @@ class GaggiuinoAPI(GaggiuinoClient):
         return self._profile
 
     async def get_profiles(self) -> list[GaggiuinoProfile] | None:
+        """Retrieve all available profiles.
+
+        Returns:
+            List of profiles or None
+        """
         url = f"{self.api_base}/profiles/all"
         profiles: list[dict[str, Any]] = await self.get(url)
         if profiles is None:
@@ -193,10 +240,26 @@ class GaggiuinoAPI(GaggiuinoClient):
         return self._profiles
 
     async def _select_profile(self, profile_id: int) -> bool:
+        """Select profile by ID.
+
+        Args:
+            profile_id: Profile ID to select
+
+        Returns:
+            True if successful
+        """
         url = f"{self.api_base}/profile-select/{profile_id}"
         return await self.post(url)
 
     async def select_profile(self, profile: GaggiuinoProfile | int) -> bool:
+        """Select a profile.
+
+        Args:
+            profile: Profile object or profile ID
+
+        Returns:
+            True if successful
+        """
         profile_id = profile
         if isinstance(profile, GaggiuinoProfile):
             profile_id = profile.id
@@ -204,10 +267,26 @@ class GaggiuinoAPI(GaggiuinoClient):
         return await self._select_profile(profile_id=profile_id)
 
     async def _delete_profile(self, profile_id: int) -> bool:
+        """Delete profile by ID.
+
+        Args:
+            profile_id: Profile ID to delete
+
+        Returns:
+            True if successful
+        """
         url = f"{self.api_base}/profile-select/{profile_id}"
         return await self.delete(url)
 
     async def delete_profile(self, profile: GaggiuinoProfile | int) -> bool:
+        """Delete a profile.
+
+        Args:
+            profile: Profile object or profile ID
+
+        Returns:
+            True if successful
+        """
         profile_id = profile
         if isinstance(profile, GaggiuinoProfile):
             profile_id = profile.id
@@ -215,10 +294,26 @@ class GaggiuinoAPI(GaggiuinoClient):
         return await self._delete_profile(profile_id=profile_id)
 
     async def _get_shot(self, shot_id: int | Literal["latest"]) -> dict:
+        """Get shot data by ID.
+
+        Args:
+            shot_id: Shot ID or 'latest'
+
+        Returns:
+            Raw shot data
+        """
         url = f"{self.api_base}/shots/{shot_id}"
         return await self.get(url)
 
     async def get_shot(self, shot_id: int) -> GaggiuinoShot | None:
+        """Retrieve shot data.
+
+        Args:
+            shot_id: Shot ID to retrieve
+
+        Returns:
+            Shot data or None
+        """
         shot = await self._get_shot(shot_id)
         if shot is None:
             _LOGGER.debug("Couldn't retrieve shot %s", shot_id)
@@ -227,6 +322,11 @@ class GaggiuinoAPI(GaggiuinoClient):
         return GaggiuinoShot(**shot)
 
     async def get_status(self) -> GaggiuinoStatus | None:
+        """Retrieve system status.
+
+        Returns:
+            System status or None
+        """
         url = f"{self.api_base}/system/status"
         status: list[dict[str, Any]] = await self.get(url)
 
@@ -236,7 +336,12 @@ class GaggiuinoAPI(GaggiuinoClient):
 
         return None
 
-    async def get_latest_shot_id(self):
+    async def get_latest_shot_id(self) -> GaggiuinoLatestShotResult | None:
+        """Retrieve latest shot ID.
+
+        Returns:
+            Latest shot result or None
+        """
         latest_shots = await self._get_shot("latest")
         if latest_shots is None:
             _LOGGER.debug("Couldn't retrieve the latest shot")
