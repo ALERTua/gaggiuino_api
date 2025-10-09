@@ -27,8 +27,8 @@ from gaggiuino_api.models import (
 )
 from gaggiuino_api.tools import strtobool
 
-if sys.platform == 'win32' and strtobool(
-    os.getenv('GAGGIUINO_DISABLE_WIN_SELECTOR', 'False')
+if sys.platform == "win32" and strtobool(
+    os.getenv("GAGGIUINO_DISABLE_WIN_SELECTOR", "False")
 ):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
