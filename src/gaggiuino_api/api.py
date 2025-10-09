@@ -163,7 +163,7 @@ class GaggiuinoAPI(GaggiuinoClient):
         self._status: GaggiuinoStatus | None = None
 
     @property
-    def profile(self):
+    def profile(self) -> GaggiuinoProfile | None:
         self._profile = None
         if self._status is not None:
             self._profile = GaggiuinoProfile(
