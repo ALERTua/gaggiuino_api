@@ -68,6 +68,10 @@ Common Tasks Cheat Sheet
 - If you need to add a new dependency, add it via `uv add`, and not via plain pyproject.toml edit.
   - Don't forget to uv lock afterwards.
 - To check for outdated dependencies use `uv_outdated.cmd` which is found in PATH.
+- Always ask open questions (if any) before implementing anything.
+- While working with a list of items to implement, return the actual list after each item with the actual items statuses.
+- Always run `tox` after implementing code changes.
+
 
 Windows Path and Shell Notes
 - Use backslashes in any paths you add to code snippets or scripts.
