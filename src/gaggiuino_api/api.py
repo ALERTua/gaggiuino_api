@@ -171,7 +171,7 @@ class GaggiuinoClient:
         self,
         url: str | None = None,
         params: dict[str, Any] = None,
-    ) -> Any:
+    ) -> dict[str, Any] | list[dict[str, Any]]:
         """Send GET request.
 
         Args:
