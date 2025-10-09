@@ -94,7 +94,7 @@ class GaggiuinoClient:
         params: dict = None,
         *,
         json_response: bool = False,
-    ) -> Any:
+    ) -> bool | dict[str, Any]:
         """Shared request handler.
 
         Args:
