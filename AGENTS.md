@@ -66,7 +66,7 @@ Common Tasks Cheat Sheet
 - Update docs only:
   - Edit README.md and run lint to ensure no trailing whitespace or formatting nits.
 - If you need to add a new dependency, add it via `uv add`, and not via plain pyproject.toml edit.
-  - Don't forget to uv lock afterwards.
+  - Don't forget to uv lock afterward.
 - To check for outdated dependencies use `uv_outdated.cmd` which is found in PATH.
 - Always ask open questions (if any) before implementing anything.
 - While working with a list of items to implement, return the actual list after each item with the actual items statuses.
