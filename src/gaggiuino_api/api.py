@@ -91,7 +91,7 @@ class GaggiuinoClient:
         self,
         method: Literal["GET", "POST", "DELETE"],
         url: str,
-        params: dict = None,
+        params: dict | None = None,
         *,
         json_response: bool = False,
     ) -> bool | dict[str, Any]:
@@ -143,7 +143,7 @@ class GaggiuinoClient:
                 f"Unhandled exception: {type(err)}: {str(err)}"
             ) from err
 
-    async def post(self, url: str, params: dict = None) -> bool:
+    async def post(self, url: str, params: dict | None = None) -> bool:
         """Send POST request.
 
         Args:
@@ -155,7 +155,7 @@ class GaggiuinoClient:
         """
         return await self._request("POST", url, params)
 
-    async def delete(self, url: str, params: dict = None) -> bool:
+    async def delete(self, url: str, params: dict | None = None) -> bool:
         """Send DELETE request.
 
         Args:
@@ -170,7 +170,7 @@ class GaggiuinoClient:
     async def get(
         self,
         url: str | None = None,
-        params: dict[str, Any] = None,
+        params: dict | None = None,
     ) -> dict[str, Any] | list[dict[str, Any]]:
         """Send GET request.
 
