@@ -36,7 +36,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class GaggiuinoClient:
-    """Initialise a client to receive Server Sent Events (SSE)"""
+    """Initialize a client to receive Server Sent Events (SSE)"""
 
     def __init__(
         self,
@@ -94,6 +94,7 @@ class GaggiuinoClient:
         params: dict | None = None,
         *,
         json_response: bool = False,
+        json_data: dict[str, Any] | None = None,
     ) -> bool | dict[str, Any]:
         """Shared request handler.
 
@@ -102,6 +103,7 @@ class GaggiuinoClient:
             url: Target URL
             params: Request parameters
             json_response: Whether to parse response as JSON
+            json_data: JSON payload to send in POST/DELETE requests
 
         Returns:
             JSON data if json_response=True, otherwise bool indicating success
@@ -111,9 +113,17 @@ class GaggiuinoClient:
         # Prepare request args
         is_get = method == "GET"
         data = None
-        if not is_get and params is not None:
-            data = urllib_parse.urlencode(params)
-        headers = self.post_headers if method in ["POST", "DELETE"] else self.headers
+        json_body = None
+        if not is_get:
+            if json_data is not None:
+                json_body = json_data
+            elif params is not None:
+                data = urllib_parse.urlencode(params)
+        headers = (
+            self.post_headers
+            if method in ["POST", "DELETE"] and json_data is None
+            else self.headers
+        )
 
         try:
             async with self.session.request(
@@ -122,6 +132,7 @@ class GaggiuinoClient:
                 params=params if is_get else None,
                 data=data,
                 headers=headers,
+                json=json_body,
                 timeout=self.timeout,
             ) as response:
                 _LOGGER.debug("%s %s -> %s", method, url, response.status)
@@ -143,7 +154,7 @@ class GaggiuinoClient:
                 f"Unhandled exception: {type(err)}: {str(err)}"
             ) from err
 
-    async def post(self, url: str, params: dict | None = None) -> bool:
+    async def post(self, url: str, params: dict | None = None, **kwargs) -> bool:
         """Send POST request.
 
         Args:
@@ -153,7 +164,7 @@ class GaggiuinoClient:
         Returns:
             True if successful
         """
-        return await self._request("POST", url, params)
+        return await self._request("POST", url, params, **kwargs)
 
     async def delete(self, url: str, params: dict | None = None) -> bool:
         """Send DELETE request.
@@ -348,6 +359,35 @@ class GaggiuinoAPI(GaggiuinoClient):
             return None
 
         return GaggiuinoLatestShotResult(**latest_shots[0])
+
+    async def update_firmware_all(self, version: str = "latest") -> bool:
+        """Update firmware for all components.
+
+        Args:
+            version: Firmware version to update to
+
+        Returns:
+            True if update initiated successfully
+        """
+        url = f"{self.api_base}/firmware/update-all"
+        return await self.post(url, json_data={"version": version})
+
+    async def get_health(self) -> dict[str, Any]:
+        """Get health status of the API.
+
+        Returns:
+            Health status dictionary
+        """
+        url = f"{self.api_base}/health"
+        return await self.get(url)
+
+    async def healthy(self):
+        health = await self.get_health()
+        try:
+            return health.get("status") == "ok"
+        except Exception as e:
+            _LOGGER.debug("Healthy check failed: %s", e)
+            return False
 
 
 async def _main():
