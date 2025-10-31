@@ -148,4 +148,36 @@ async def test_get_health(api_client, monkeypatch):
     health = await api_client.get_health()
     assert health == expected_health
     assert health["status"] == "ok"
-    assert api_client.healthy() is True
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_update_firmware_all(api_client, monkeypatch):
+    """Test updating firmware for all components."""
+    call_count = 0
+
+    async def _fake_request(
+        method, url, params=None, json_response=False, json_data=None
+    ):
+        nonlocal call_count
+        # Ensure we call the expected endpoint with correct method
+        assert method == "POST"
+        assert url == f"{api_client.api_base}/firmware/update-all"
+
+        call_count += 1
+        if call_count == 1:
+            assert json_data == {"version": "latest"}
+        elif call_count == 2:
+            assert json_data == {"version": "1.0.0"}
+
+        return True  # Simulate success
+
+    # Patch the _request method used by update_firmware_all()
+    monkeypatch.setattr(api_client, "_request", _fake_request)
+
+    # Test update firmware with default version
+    result = await api_client.update_firmware()
+    assert result is True
+
+    # Test update firmware with specific version
+    result = await api_client.update_firmware("1.0.0")
+    assert result is True

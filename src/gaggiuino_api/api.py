@@ -360,7 +360,7 @@ class GaggiuinoAPI(GaggiuinoClient):
 
         return GaggiuinoLatestShotResult(**latest_shots[0])
 
-    async def update_firmware_all(self, version: str = "latest") -> bool:
+    async def update_firmware(self, version: str = "latest") -> bool:
         """Update firmware for all components.
 
         Args:
