@@ -182,18 +182,23 @@ class GaggiuinoClient:
         self,
         url: str | None = None,
         params: dict | None = None,
+        json_response: bool = True,
+        **kwargs,
     ) -> dict[str, Any] | list[dict[str, Any]]:
         """Send GET request.
 
         Args:
             url: Target URL (defaults to base_url)
             params: Query parameters
+            json_response: Whether to parse response as JSON
 
         Returns:
             JSON response data
         """
         url = url or self.base_url
-        return await self._request("GET", url, params, json_response=True)
+        return await self._request(
+            "GET", url, params, json_response=json_response, **kwargs
+        )
 
 
 class GaggiuinoAPI(GaggiuinoClient):
@@ -371,6 +376,16 @@ class GaggiuinoAPI(GaggiuinoClient):
         """
         url = f"{self.api_base}/firmware/update-all"
         return await self.post(url, json_data={"version": version})
+
+    async def get_firmware_progress(self) -> dict[str, Any]:
+        """Get firmware update progress status.
+
+        Returns:
+            Firmware progress dictionary
+            {"progress": 0, "status": "IDLE", "type": "F_FW"}
+        """
+        url = f"{self.api_base}/firmware/progress"
+        return await self.get(url, json_response=True)
 
     async def get_health(self) -> dict[str, Any]:
         """Get health status of the API.

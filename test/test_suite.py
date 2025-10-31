@@ -151,6 +151,31 @@ async def test_get_health(api_client, monkeypatch):
 
 
 @pytest.mark.asyncio(loop_scope="session")
+async def test_get_firmware_progress(api_client, monkeypatch):
+    """Test getting firmware update progress."""
+    expected_progress = {"progress": 0, "status": "IDLE", "type": "F_FW"}
+
+    async def _fake_get(
+        url: str | None = None,
+        params: dict | None = None,
+        json_response: bool = True,
+    ):
+        # Ensure we call the expected endpoint
+        assert url == f"{api_client.api_base}/firmware/progress"
+        return expected_progress
+
+    # Patch the get method used by get_firmware_progress()
+    monkeypatch.setattr(api_client, "get", _fake_get)
+
+    # Get firmware progress
+    progress = await api_client.get_firmware_progress()
+    assert progress == expected_progress
+    assert progress["progress"] == 0
+    assert progress["status"] == "IDLE"
+    assert progress["type"] == "F_FW"
+
+
+@pytest.mark.asyncio(loop_scope="session")
 async def test_update_firmware_all(api_client, monkeypatch):
     """Test updating firmware for all components."""
     call_count = 0
