@@ -382,7 +382,10 @@ class GaggiuinoAPI(GaggiuinoClient):
 
         Returns:
             Firmware progress dictionary
-            {"progress": 0, "status": "IDLE", "type": "F_FW"}
+            {"progress":0,"status":"IDLE","type":"F_FW"}
+            {"progress":0,"status":"ERROR","type":"F_FS"}
+            {"progress":0,"status":"IN_PROGRESS","type":"C_FW"}
+            {"progress":0,"status":"ERROR","type":"C_FW"}
         """
         url = f"{self.api_base}/firmware/progress"
         return await self.get(url, json_response=True)
@@ -412,6 +415,7 @@ async def _main():
         _latest_shot_id_result = await gapi.get_latest_shot_id()
         _latest_shot_id = _latest_shot_id_result.lastShotId
         _shot = await gapi.get_shot(_latest_shot_id)
+        _fw = await gapi.update_firmware()
         _test_profile = next((_ for _ in _profiles if _.name == 'test (copy)'), None)
         _deletion = await gapi.delete_profile(_test_profile)
     pass
