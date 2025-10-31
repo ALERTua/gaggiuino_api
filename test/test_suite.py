@@ -129,3 +129,23 @@ async def test_delete_profile_mock(api_client, monkeypatch):
 
     # Deleting by invalid id should fail
     assert await api_client.delete_profile(99999) is False
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_get_health(api_client, monkeypatch):
+    """Test getting health status."""
+    expected_health = {"status": "ok"}
+
+    async def _fake_get(url: str | None = None, params: dict | None = None):
+        # Ensure we call the expected endpoint
+        assert url == f"{api_client.api_base}/health"
+        return expected_health
+
+    # Patch the get method used by get_health()
+    monkeypatch.setattr(api_client, "get", _fake_get)
+
+    # Get health status
+    health = await api_client.get_health()
+    assert health == expected_health
+    assert health["status"] == "ok"
+    assert api_client.healthy() is True
