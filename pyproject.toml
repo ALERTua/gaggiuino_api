@@ -23,7 +23,7 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "ruff",
-    "twine",
+    "rust-just",
 ]
 
 [tool.ruff]
