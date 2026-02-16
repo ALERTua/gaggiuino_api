@@ -1,6 +1,6 @@
 [project]
 name = "gaggiuino_api"
-version = "0.1.13b1"
+version = "0.1.13b2"
 description = "Gaggiuino REST Api Wrapper"
 readme = "README.md"
 authors = [
