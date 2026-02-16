@@ -7,7 +7,7 @@ Repository Basics
 - Language/Version: Python 3.13. Should be in sync with [Home Assistant Core pyproject.toml](https://github.com/home-assistant/core/blob/dev/pyproject.toml)
 - Python version always follows the one that Home Assistant project uses
 - Packaging: PEP 621 via pyproject.toml, src layout
-- Task runner: tox, pre-commit
+- Task runner: pre-commit
 - Testing: pytest (asyncio auto mode)
 - Lint/Format: ruff (check + format) via pre-commit
 
@@ -20,7 +20,7 @@ Core Principles
 
 Coding Standards
 - Linting/formatting: ruff is the source of truth.
-  - Run: tox
+  - Run: uv run pre-commit
   - If formatting changes are required, apply ruff format locally before committing (or propose the minimal needed edits).
 - Line length: 120 (pycodestyle), docstring code blocks line length: 88.
 - Quote style: preserve (do not churn quotes unnecessarily).
@@ -28,7 +28,7 @@ Coding Standards
 - Typing: Maintain or improve type hints; project is typed (py.typed present).
 
 Tests
-- Run unit tests via tox:
+- Run unit tests via pre-commit:
   - asyncio mode is auto; default fixture loop scope is session.
 - Add tests only when necessary to validate a bugfix or new behavior; keep them minimal and focused.
 
@@ -62,7 +62,7 @@ Common Tasks Cheat Sheet
 - Fix a bug:
   - Reproduce with a failing test when possible.
   - Implement the smallest fix.
-  - Run `tox`.
+  - Run `uv run pre-commit`.
 - Update docs only:
   - Edit README.md and run lint to ensure no trailing whitespace or formatting nits.
 - If you need to add a new dependency, add it via `uv add`, and not via plain pyproject.toml edit.
@@ -70,7 +70,7 @@ Common Tasks Cheat Sheet
 - To check for outdated dependencies use `uv_outdated.cmd` which is found in PATH.
 - Always ask open questions (if any) before implementing anything.
 - While working with a list of items to implement, return the actual list after each item with the actual items statuses.
-- Always run `tox` after implementing code changes.
+- Always run `uv run pre-commit` after implementing code changes.
 
 
 Windows Path and Shell Notes
@@ -78,7 +78,7 @@ Windows Path and Shell Notes
 - PowerShell semantics apply for shell command examples in repo scripts.
 
 Safety Checks Before Submit
-- Ensure: `tox` passes.
+- Ensure: `uv run pre-commit` passes.
 - Ensure: changes are minimal and directly address the issue.
 
 Responces guidelines

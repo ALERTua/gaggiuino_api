@@ -23,7 +23,6 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "ruff",
-    "tox-uv",
     "twine",
 ]
 
@@ -34,7 +33,6 @@ extend-exclude = [
     "script/",
     "dist/",
     "images/",
-    ".tox/",
     ".venv/",
 ]
 extend-include = []
