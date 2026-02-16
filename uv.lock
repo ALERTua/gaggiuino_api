@@ -209,12 +209,12 @@ requires-dist = [{ name = "aiohttp" }]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pre-commit-uv", specifier = ">=4.2.0" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-asyncio", specifier = ">=1.2.0" },
-    { name = "ruff", specifier = ">=0.14.3" },
-    { name = "tox-uv", specifier = ">=1.29.0" },
-    { name = "twine", specifier = ">=6.2.0" },
+    { name = "pre-commit-uv" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+    { name = "tox-uv" },
+    { name = "twine" },
 ]
 
 [[package]]

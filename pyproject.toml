@@ -11,9 +11,6 @@ dependencies = [
     "aiohttp",
 ]
 
-[tool.uv.sources]
-gaggiuino-api = { workspace = true }
-
 [tool.setuptools]
 package-dir = {"" = "src"}
 
@@ -22,12 +19,12 @@ where = ["src"]
 
 [dependency-groups]
 dev = [
-    "pre-commit-uv>=4.2.0",
-    "pytest>=8.4.2",
-    "pytest-asyncio>=1.2.0",
-    "ruff>=0.14.3",
-    "tox-uv>=1.29.0",
-    "twine>=6.2.0",
+    "pre-commit-uv",
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+    "tox-uv",
+    "twine",
 ]
 
 [tool.ruff]
