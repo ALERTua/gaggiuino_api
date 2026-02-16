@@ -342,7 +342,7 @@ wheels = [
 
 [[package]]
 name = "gaggiuino-api"
-version = "0.1.12"
+version = "0.1.13b1"
 source = { virtual = "." }
 dependencies = [
     { name = "aiohttp" },
