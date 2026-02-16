@@ -399,7 +399,7 @@ class GaggiuinoAPI(GaggiuinoClient):
         url = f"{self.api_base}/health"
         return await self.get(url)
 
-    async def healthy(self):
+    async def healthy(self) -> bool:
         health = await self.get_health()
         try:
             return health.get("status") == "ok"
