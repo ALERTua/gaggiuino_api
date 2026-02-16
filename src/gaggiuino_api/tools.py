@@ -8,10 +8,18 @@ def strtobool(val: str):  # distutil strtobool
     are 'n', 'no', 'f', 'false', 'off', and '0'.  Raises ValueError if
     'val' is anything else.
     """
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, int):
+        if val == 1:
+            return True
+        elif val == 0:
+            return False
+
     val = val.lower()
     if val in ('y', 'yes', 't', 'true', 'on', '1'):
         return True
     elif val in ('n', 'no', 'f', 'false', 'off', '0'):
         return False
     else:
-        raise ValueError("invalid truth value %r" % (val,))
+        raise ValueError(f"invalid truth value {val}")

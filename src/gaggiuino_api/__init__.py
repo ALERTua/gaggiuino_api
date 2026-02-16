@@ -14,6 +14,17 @@ from .models import (
     GaggiuinoProfilePhaseTarget,
     GaggiuinoProfilePhaseStopCondition,
     GaggiuinoStatus,
+    GaggiuinoLatestShotResult,
+    GaggiuinoBoilerSettings,
+    GaggiuinoSystemSettings,
+    GaggiuinoLedColor,
+    GaggiuinoTofSettings,
+    GaggiuinoLedSettings,
+    GaggiuinoScalesSettings,
+    GaggiuinoDisplaySettings,
+    GaggiuinoThemeSettings,
+    GaggiuinoVersions,
+    GaggiuinoSettings,
 )
 
 __all__ = [
@@ -30,4 +41,15 @@ __all__ = [
     'GaggiuinoProfilePhaseStopCondition',
     'GaggiuinoStatus',
     'GaggiuinoConnectionTimeoutError',
+    'GaggiuinoLatestShotResult',
+    'GaggiuinoBoilerSettings',
+    'GaggiuinoSystemSettings',
+    'GaggiuinoLedColor',
+    'GaggiuinoTofSettings',
+    'GaggiuinoLedSettings',
+    'GaggiuinoScalesSettings',
+    'GaggiuinoDisplaySettings',
+    'GaggiuinoThemeSettings',
+    'GaggiuinoVersions',
+    'GaggiuinoSettings',
 ]
