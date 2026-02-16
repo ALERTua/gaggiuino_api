@@ -50,7 +50,7 @@ async def test_select_profile(api_client):
     if not profiles:
         pytest.skip("No profiles available for testing")
 
-    profile_off_name = os.getenv('GAGGIUINO_PROFILE_OFF', 'OFF')
+    profile_off_name = os.getenv('GAGGIUINO_PROFILE_OFF', '_OFF')
     profile_test_name = os.getenv('GAGGIUINO_PROFILE_TEST', 'test')
 
     profile_off = next((_ for _ in profiles if _.name == profile_off_name), None)
