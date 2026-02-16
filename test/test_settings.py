@@ -134,8 +134,8 @@ async def test_boiler_settings_to_api_dict(mock_boiler_settings_data):
     assert api_dict["hpwr"] == 1200
     assert api_dict["mainDivider"] == 2
     assert api_dict["brewDivider"] == 4
-    assert api_dict["brewDeltaState"] == "true"
-    assert api_dict["dreamSteamState"] == "false"
+    assert api_dict["brewDeltaState"] is True
+    assert api_dict["dreamSteamState"] is False
     assert api_dict["startupHeatDelta"] == 10
 
 
@@ -243,7 +243,7 @@ async def test_get_display_settings(
     assert settings is not None
     assert isinstance(settings, GaggiuinoDisplaySettings)
     assert settings.lcdBrightness == 80
-    assert settings.lcdDarkMode == "false"
+    assert settings.lcdDarkMode is False
     assert settings.lcdSleep == 10
     assert settings.lcdGoHome == 5
 

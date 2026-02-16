@@ -26,8 +26,8 @@ def mock_status_data():
             "pressure": "-0.028054",
             "waterLevel": "100",
             "weight": "0.000000",
-            "brewSwitchState": "false",
-            "steamSwitchState": "false",
+            "brewSwitchState": False,
+            "steamSwitchState": False,
         }
     ]
 
@@ -114,8 +114,8 @@ def mock_boiler_settings_data():
         "hpwr": 1200,
         "mainDivider": 2,
         "brewDivider": 4,
-        "brewDeltaState": "true",
-        "dreamSteamState": "false",
+        "brewDeltaState": True,
+        "dreamSteamState": False,
         "startupHeatDelta": 10,
     }
 
@@ -145,7 +145,7 @@ def mock_display_settings_data():
     """Mock display settings response data."""
     return {
         "lcdBrightness": 80,
-        "lcdDarkMode": "false",
+        "lcdDarkMode": False,
         "lcdSleep": 10,
         "lcdGoHome": 5,
     }
@@ -155,12 +155,12 @@ def mock_display_settings_data():
 def mock_scales_settings_data():
     """Mock scales settings response data."""
     return {
-        "forcePredictive": "false",
-        "hwScalesEnabled": "true",
+        "forcePredictive": False,
+        "hwScalesEnabled": True,
         "hwScalesF1": 1000,
         "hwScalesF2": 2000,
-        "btScalesEnabled": "false",
-        "btScalesAutoConnect": "false",
+        "btScalesEnabled": False,
+        "btScalesAutoConnect": False,
     }
 
 
@@ -169,8 +169,8 @@ def mock_led_settings_data():
     """Mock LED settings response data."""
     return {
         "color": {"R": 255, "G": 128, "B": 0},
-        "state": "true",
-        "disco": "false",
+        "state": True,
+        "disco": False,
         "tof": {"max": 100, "min": 10},
     }
 

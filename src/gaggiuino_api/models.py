@@ -3,7 +3,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
-from gaggiuino_api.tools import strtobool
 
 
 @dataclass(frozen=True)
@@ -258,8 +257,8 @@ class GaggiuinoStatus:
       "pressure": "-0.028054",
       "waterLevel": "100",
       "weight": "0.000000",
-      "brewSwitchState": "false",
-      "steamSwitchState": "false"
+      "brewSwitchState": false,
+      "steamSwitchState": false
     }
 
     """
@@ -286,8 +285,8 @@ class GaggiuinoStatus:
             pressure=float(data['pressure']),
             waterLevel=int(data['waterLevel']),
             weight=float(data['weight']),
-            brewSwitchState=strtobool(data['brewSwitchState']),
-            steamSwitchState=strtobool(data['steamSwitchState']),
+            brewSwitchState=bool(data['brewSwitchState']),
+            steamSwitchState=bool(data['steamSwitchState']),
         )
 
 
@@ -296,7 +295,7 @@ class GaggiuinoLatestShotResult:
     """
     [
         {
-            "lastShotId": "100"
+            "lastShotId": 100
         }
     ]
     """
@@ -315,7 +314,7 @@ class GaggiuinoLatestShotResult:
 
     def to_api_dict(self) -> dict:
         """Convert to API request format."""
-        return {"lastShotId": str(self.lastShotId)}
+        return {"lastShotId": self.lastShotId}
 
 
 # Settings Models
@@ -332,8 +331,8 @@ class GaggiuinoBoilerSettings:
         "hpwr": 1200,
         "mainDivider": 2,
         "brewDivider": 4,
-        "brewDeltaState": "true",
-        "dreamSteamState": "false",
+        "brewDeltaState": true,
+        "dreamSteamState": false,
         "startupHeatDelta": 10
     }
     """
@@ -343,8 +342,8 @@ class GaggiuinoBoilerSettings:
     hpwr: int
     mainDivider: int
     brewDivider: int
-    brewDeltaState: str
-    dreamSteamState: str
+    brewDeltaState: bool
+    dreamSteamState: bool
     startupHeatDelta: int
 
     @staticmethod
@@ -355,8 +354,8 @@ class GaggiuinoBoilerSettings:
             hpwr=int(data["hpwr"]),
             mainDivider=int(data["mainDivider"]),
             brewDivider=int(data["brewDivider"]),
-            brewDeltaState=str(data["brewDeltaState"]),
-            dreamSteamState=str(data["dreamSteamState"]),
+            brewDeltaState=bool(data["brewDeltaState"]),
+            dreamSteamState=bool(data["dreamSteamState"]),
             startupHeatDelta=int(data["startupHeatDelta"]),
         )
 
@@ -490,8 +489,8 @@ class GaggiuinoLedSettings:
             "G": 128,
             "B": 0
         },
-        "state": "true",
-        "disco": "false",
+        "state": true,
+        "disco": false,
         "tof": {
             "max": 100,
             "min": 10
@@ -508,8 +507,8 @@ class GaggiuinoLedSettings:
     def from_dict(data: dict) -> "GaggiuinoLedSettings":
         return GaggiuinoLedSettings(
             color=GaggiuinoLedColor.from_dict(data["color"]),
-            state=strtobool(data["state"]),
-            disco=strtobool(data["disco"]),
+            state=bool(data["state"]),
+            disco=bool(data["disco"]),
             tof=GaggiuinoTofSettings.from_dict(data["tof"]),
         )
 
@@ -528,12 +527,12 @@ class GaggiuinoScalesSettings:
 
     Response Example:
     {
-        "forcePredictive": "false",
-        "hwScalesEnabled": "true",
+        "forcePredictive": false,
+        "hwScalesEnabled": true,
         "hwScalesF1": 1000,
         "hwScalesF2": 2000,
-        "btScalesEnabled": "false",
-        "btScalesAutoConnect": "false"
+        "btScalesEnabled": false,
+        "btScalesAutoConnect": false
     }
 
     Field Notes:
@@ -550,12 +549,12 @@ class GaggiuinoScalesSettings:
     @staticmethod
     def from_dict(data: dict) -> "GaggiuinoScalesSettings":
         return GaggiuinoScalesSettings(
-            forcePredictive=strtobool(data["forcePredictive"]),
-            hwScalesEnabled=strtobool(data["hwScalesEnabled"]),
+            forcePredictive=bool(data["forcePredictive"]),
+            hwScalesEnabled=bool(data["hwScalesEnabled"]),
             hwScalesF1=int(data["hwScalesF1"]),
             hwScalesF2=int(data["hwScalesF2"]),
-            btScalesEnabled=strtobool(data["btScalesEnabled"]),
-            btScalesAutoConnect=strtobool(data["btScalesAutoConnect"]),
+            btScalesEnabled=bool(data["btScalesEnabled"]),
+            btScalesAutoConnect=bool(data["btScalesAutoConnect"]),
         )
 
     def to_api_dict(self) -> dict:
@@ -576,7 +575,7 @@ class GaggiuinoDisplaySettings:
     Response Example:
     {
         "lcdBrightness": 80,
-        "lcdDarkMode": "false",
+        "lcdDarkMode": false,
         "lcdSleep": 10,
         "lcdGoHome": 5
     }
@@ -588,7 +587,7 @@ class GaggiuinoDisplaySettings:
     """
 
     lcdBrightness: int
-    lcdDarkMode: str
+    lcdDarkMode: bool
     lcdSleep: int
     lcdGoHome: int
 
@@ -596,7 +595,7 @@ class GaggiuinoDisplaySettings:
     def from_dict(data: dict) -> "GaggiuinoDisplaySettings":
         return GaggiuinoDisplaySettings(
             lcdBrightness=int(data["lcdBrightness"]),
-            lcdDarkMode=str(data["lcdDarkMode"]),
+            lcdDarkMode=bool(data["lcdDarkMode"]),
             lcdSleep=int(data["lcdSleep"]),
             lcdGoHome=int(data["lcdGoHome"]),
         )
@@ -604,7 +603,7 @@ class GaggiuinoDisplaySettings:
     def to_api_dict(self) -> dict:
         return {
             "lcdBrightness": self.lcdBrightness,
-            "lcdDarkMode": self.lcdDarkMode,
+            "lcdDarkMode": bool(self.lcdDarkMode),
             "lcdSleep": self.lcdSleep,
             "lcdGoHome": self.lcdGoHome,
         }
