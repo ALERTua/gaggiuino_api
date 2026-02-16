@@ -24,6 +24,14 @@ from gaggiuino_api.models import (
     GaggiuinoShot,
     GaggiuinoStatus,
     GaggiuinoLatestShotResult,
+    GaggiuinoBoilerSettings,
+    GaggiuinoSystemSettings,
+    GaggiuinoLedSettings,
+    GaggiuinoScalesSettings,
+    GaggiuinoDisplaySettings,
+    GaggiuinoThemeSettings,
+    GaggiuinoVersions,
+    GaggiuinoSettings,
 )
 from gaggiuino_api.tools import strtobool
 
@@ -363,7 +371,7 @@ class GaggiuinoAPI(GaggiuinoClient):
             _LOGGER.debug("Couldn't retrieve the latest shot")
             return None
 
-        return GaggiuinoLatestShotResult(**latest_shots[0])
+        return GaggiuinoLatestShotResult.from_dict(latest_shots[0])
 
     async def update_firmware(self, version: str = "latest") -> bool:
         """Update firmware for all components.
@@ -406,6 +414,230 @@ class GaggiuinoAPI(GaggiuinoClient):
         except Exception as e:
             _LOGGER.debug("Healthy check failed: %s", e)
             return False
+
+    # Settings API Methods
+
+    async def get_settings(self) -> GaggiuinoSettings | None:
+        """Retrieve all settings in a single response.
+
+        Returns:
+            GaggiuinoSettings object containing all settings categories or None
+        """
+        url = f"{self.api_base}/settings"
+        data: dict[str, Any] = await self.get(url)
+        if data is None:
+            return None
+        return GaggiuinoSettings.from_dict(data)
+
+    async def get_boiler_settings(self) -> GaggiuinoBoilerSettings | None:
+        """Retrieve boiler-related settings.
+
+        Includes steam set point, temperature offset, heating power, dividers,
+        and operational states.
+
+        Returns:
+            GaggiuinoBoilerSettings object or None
+        """
+        url = f"{self.api_base}/settings/boiler"
+        data: dict[str, Any] = await self.get(url)
+        if data is None:
+            return None
+        return GaggiuinoBoilerSettings.from_dict(data)
+
+    async def update_boiler_settings(
+        self, settings: GaggiuinoBoilerSettings | dict[str, Any]
+    ) -> bool:
+        """Update boiler settings.
+
+        Args:
+            settings: GaggiuinoBoilerSettings object or dict with settings
+
+        Returns:
+            True if successful
+        """
+        url = f"{self.api_base}/settings/boiler"
+        if isinstance(settings, GaggiuinoBoilerSettings):
+            data = settings.to_api_dict()
+        else:
+            data = settings
+        return await self.post(url, json_data=data)
+
+    async def get_system_settings(self) -> GaggiuinoSystemSettings | None:
+        """Retrieve system-level settings.
+
+        Includes pump calibration, timezone, API tokens, services state,
+        WiFi, and release channel.
+
+        Returns:
+            GaggiuinoSystemSettings object or None
+        """
+        url = f"{self.api_base}/settings/system"
+        data: dict[str, Any] = await self.get(url)
+        if data is None:
+            return None
+        return GaggiuinoSystemSettings.from_dict(data)
+
+    async def update_system_settings(
+        self, settings: GaggiuinoSystemSettings | dict[str, Any]
+    ) -> bool:
+        """Update system settings.
+
+        Args:
+            settings: GaggiuinoSystemSettings object or dict with settings
+
+        Returns:
+            True if successful
+        """
+        url = f"{self.api_base}/settings/system"
+        if isinstance(settings, GaggiuinoSystemSettings):
+            data = settings.to_api_dict()
+        else:
+            data = settings
+        return await self.post(url, json_data=data)
+
+    async def get_theme_settings(self) -> GaggiuinoThemeSettings | None:
+        """Retrieve theme color settings.
+
+        Colors are in RGB565 format.
+
+        Returns:
+            GaggiuinoThemeSettings object or None
+        """
+        url = f"{self.api_base}/settings/theme"
+        data: dict[str, Any] = await self.get(url)
+        if data is None:
+            return None
+        return GaggiuinoThemeSettings.from_dict(data)
+
+    async def update_theme_settings(
+        self, settings: GaggiuinoThemeSettings | dict[str, Any]
+    ) -> bool:
+        """Update theme color settings.
+
+        Colors should be provided in RGB565 format.
+
+        Args:
+            settings: GaggiuinoThemeSettings object or dict with settings
+
+        Returns:
+            True if successful
+        """
+        url = f"{self.api_base}/settings/theme"
+        if isinstance(settings, GaggiuinoThemeSettings):
+            data = settings.to_api_dict()
+        else:
+            data = settings
+        return await self.post(url, json_data=data)
+
+    async def get_display_settings(self) -> GaggiuinoDisplaySettings | None:
+        """Retrieve display-related settings.
+
+        Includes brightness, dark mode, sleep timeout, and auto-home timeout.
+
+        Returns:
+            GaggiuinoDisplaySettings object or None
+        """
+        url = f"{self.api_base}/settings/display"
+        data: dict[str, Any] = await self.get(url)
+        if data is None:
+            return None
+        return GaggiuinoDisplaySettings.from_dict(data)
+
+    async def update_display_settings(
+        self, settings: GaggiuinoDisplaySettings | dict[str, Any]
+    ) -> bool:
+        """Update display settings.
+
+        Args:
+            settings: GaggiuinoDisplaySettings object or dict with settings
+
+        Returns:
+            True if successful
+        """
+        url = f"{self.api_base}/settings/display"
+        if isinstance(settings, GaggiuinoDisplaySettings):
+            data = settings.to_api_dict()
+        else:
+            data = settings
+        return await self.post(url, json_data=data)
+
+    async def get_scales_settings(self) -> GaggiuinoScalesSettings | None:
+        """Retrieve scales-related settings.
+
+        Includes hardware scales, Bluetooth scales, and calibration factors.
+
+        Returns:
+            GaggiuinoScalesSettings object or None
+        """
+        url = f"{self.api_base}/settings/scales"
+        data: dict[str, Any] = await self.get(url)
+        if data is None:
+            return None
+        return GaggiuinoScalesSettings.from_dict(data)
+
+    async def update_scales_settings(
+        self, settings: GaggiuinoScalesSettings | dict[str, Any]
+    ) -> bool:
+        """Update scales settings.
+
+        Args:
+            settings: GaggiuinoScalesSettings object or dict with settings
+
+        Returns:
+            True if successful
+        """
+        url = f"{self.api_base}/settings/scales"
+        if isinstance(settings, GaggiuinoScalesSettings):
+            data = settings.to_api_dict()
+        else:
+            data = settings
+        return await self.post(url, json_data=data)
+
+    async def get_led_settings(self) -> GaggiuinoLedSettings | None:
+        """Retrieve LED-related settings.
+
+        Includes RGB color, state, disco mode, and time-of-flight sensor config.
+
+        Returns:
+            GaggiuinoLedSettings object or None
+        """
+        url = f"{self.api_base}/settings/led"
+        data: dict[str, Any] = await self.get(url)
+        if data is None:
+            return None
+        return GaggiuinoLedSettings.from_dict(data)
+
+    async def update_led_settings(
+        self, settings: GaggiuinoLedSettings | dict[str, Any]
+    ) -> bool:
+        """Update LED settings.
+
+        Args:
+            settings: GaggiuinoLedSettings object or dict with settings
+
+        Returns:
+            True if successful
+        """
+        url = f"{self.api_base}/settings/led"
+        if isinstance(settings, GaggiuinoLedSettings):
+            data = settings.to_api_dict()
+        else:
+            data = settings
+        return await self.post(url, json_data=data)
+
+    async def get_versions(self) -> GaggiuinoVersions | None:
+        """Retrieve version information for all system components.
+
+        This endpoint is read-only (no POST method available).
+
+        Returns:
+            GaggiuinoVersions object or None
+        """
+        url = f"{self.api_base}/settings/versions"
+        data: dict[str, Any] = await self.get(url)
+        if data is None:
+            return None
+        return GaggiuinoVersions.from_dict(data)
 
 
 async def _main():
