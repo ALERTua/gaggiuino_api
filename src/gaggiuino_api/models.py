@@ -246,7 +246,7 @@ class GaggiuinoShot:
     timestamp: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoStatus:
     """
     {
@@ -321,7 +321,7 @@ class GaggiuinoLatestShotResult:
 # Settings Models
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoBoilerSettings:
     """Boiler settings model.
 
@@ -374,7 +374,7 @@ class GaggiuinoBoilerSettings:
         }
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoSystemSettings:
     """System settings model.
 
@@ -479,7 +479,7 @@ class GaggiuinoTofSettings:
         return {"max": self.max, "min": self.min}
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoLedSettings:
     """LED settings model.
 
@@ -522,7 +522,7 @@ class GaggiuinoLedSettings:
         }
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoScalesSettings:
     """Scales settings model.
 
@@ -569,7 +569,7 @@ class GaggiuinoScalesSettings:
         }
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoDisplaySettings:
     """Display settings model.
 
@@ -672,7 +672,7 @@ class GaggiuinoVersions:
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class GaggiuinoSettings:
     """Aggregate settings model containing all settings categories.
 
