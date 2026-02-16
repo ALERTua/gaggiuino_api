@@ -1,13 +1,9 @@
 # https://github.com/casey/just
 set dotenv-load
 
-# Set shell for non-Windows OSs:
 set shell := ["powershell", "-c"]
-
-# Set shell for Windows OSs:
 set windows-shell := ["cmd", "/c"]
 
-# Run pre-commit
 lint:
     uv run ruff format .
     uv run ruff check --fix
@@ -23,7 +19,6 @@ build:
 install:
     uv sync --dev --upgrade
 
-# Update version across all files
 version VERSION:
     uv version {{VERSION}}
     just install
