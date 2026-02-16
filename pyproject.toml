@@ -11,6 +11,9 @@ dependencies = [
     "aiohttp",
 ]
 
+[tool.uv.sources]
+gaggiuino-api = { workspace = true }
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
