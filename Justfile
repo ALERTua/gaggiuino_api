@@ -11,6 +11,9 @@ lint:
 pre:
     uv run pre-commit run --all-files
 
+pre-update:
+    uv run pre-commit autoupdate
+
 build:
     del /s /q dist\*.tar.gz
     del /s /q dist\*.whl
