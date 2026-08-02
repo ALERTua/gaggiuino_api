@@ -25,6 +25,9 @@ build:
 install:
     uv sync --dev --upgrade
 
+uv-outdated *args:
+    uv tree -d 1 --universal --outdated {{args}}
+
 version VERSION:
     uv version {{VERSION}}
     just install

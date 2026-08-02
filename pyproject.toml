@@ -70,6 +70,14 @@ max-public-methods = 30
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = ["E402"]
 
+# `# ty: ignore[deprecated]` on the win32-only event loop policy workaround is
+# "used" on Windows and "unused" on Linux CI; don't fail on the mismatch
+[[tool.ty.overrides]]
+include = ["src/gaggiuino_api/api.py"]
+
+[tool.ty.overrides.rules]
+unused-ignore-comment = "ignore"
+
 [tool.pytest.ini_options]
 minversion = "8.3.5"
 pythonpath = ["src"]
