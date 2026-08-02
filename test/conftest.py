@@ -1,12 +1,12 @@
 """Shared fixtures for Gaggiuino API tests."""
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock
 from aiohttp import ClientSession
 
 from gaggiuino_api import GaggiuinoAPI
-from gaggiuino_api.const import DEFAULT_BASE_URL
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -96,6 +96,41 @@ def mock_shot_data():
             "waterTemperature": 90,
         },
         "timestamp": 1731316192,
+    }
+
+
+@pytest.fixture
+def mock_profile_export_data():
+    """Mock single profile export response data.
+
+    The API intentionally omits 'id' in this response.
+    """
+    return {
+        "name": "18g Double",
+        "waterTemperature": 93,
+        "phases": [
+            {
+                "type": "PRESSURE",
+                "skip": False,
+                "name": "Preinfusion",
+                "target": {"end": 3, "curve": "LINEAR", "time": 5000},
+                "stopConditions": {"time": 10000, "pressureAbove": 4},
+                "restriction": 0,
+            }
+        ],
+        "globalStopConditions": {"time": 40000, "weight": 36},
+        "recipe": {"coffeeIn": 18, "coffeeOut": 36, "ratio": 2},
+    }
+
+
+@pytest.fixture
+def mock_maintenance_data():
+    """Mock maintenance response data."""
+    return {
+        "lastDescaleTimestamp": 1753900000,
+        "shotsSinceDescale": 42,
+        "lastBackflushTimestamp": 1753000000,
+        "shotsSinceBackflush": 10,
     }
 
 
@@ -233,17 +268,6 @@ async def _mock_session():
 async def _api_client(mock_session):
     """API client with mocked session for unit tests."""
     async with GaggiuinoAPI(session=mock_session) as client:
-        yield client
-
-
-@pytest_asyncio.fixture(loop_scope="session", name="real_api_client")
-async def _real_api_client():
-    """Real API client for integration tests.
-
-    This fixture creates a real connection to the Gaggiuino device.
-    Should only be used in integration tests that are skipped by default.
-    """
-    async with GaggiuinoAPI(base_url=DEFAULT_BASE_URL) as client:
         yield client
 
 

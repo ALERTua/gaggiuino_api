@@ -6,32 +6,38 @@ import asyncio
 import logging
 import os
 import sys
-from typing import Type, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from urllib import parse as urllib_parse
+
+if TYPE_CHECKING:
+    from types import TracebackType
+    from typing import Self
 
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientConnectionError
 
 from gaggiuino_api.const import DEFAULT_BASE_URL, DEFAULT_TIMEOUT
 from gaggiuino_api.exceptions import (
-    GaggiuinoError,
     GaggiuinoConnectionError,
-    GaggiuinoEndpointNotFoundError,
     GaggiuinoConnectionTimeoutError,
+    GaggiuinoEndpointNotFoundError,
+    GaggiuinoError,
+    GaggiuinoResponseError,
 )
 from gaggiuino_api.models import (
+    GaggiuinoBoilerSettings,
+    GaggiuinoDisplaySettings,
+    GaggiuinoLatestShotResult,
+    GaggiuinoLedSettings,
+    GaggiuinoMaintenance,
     GaggiuinoProfile,
+    GaggiuinoScalesSettings,
+    GaggiuinoSettings,
     GaggiuinoShot,
     GaggiuinoStatus,
-    GaggiuinoLatestShotResult,
-    GaggiuinoBoilerSettings,
     GaggiuinoSystemSettings,
-    GaggiuinoLedSettings,
-    GaggiuinoScalesSettings,
-    GaggiuinoDisplaySettings,
     GaggiuinoThemeSettings,
     GaggiuinoVersions,
-    GaggiuinoSettings,
 )
 from gaggiuino_api.tools import strtobool
 
@@ -68,15 +74,15 @@ class GaggiuinoClient:
             )
             self._client_timeout = ClientTimeout(total=self.timeout)
 
-    async def __aenter__(self) -> "GaggiuinoClient":
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 
     async def __aexit__(
         self,
-        exc_type: Type[BaseException] | None,
+        exc_type: type[BaseException] | None,
         exc: BaseException | None,
-        tb: object | None,
+        tb: TracebackType | None,
     ) -> None:
         await self.disconnect()
 
@@ -149,18 +155,20 @@ class GaggiuinoClient:
 
                 if not json_response:
                     return response.status == 200
+
+                if response.status >= 400:
+                    body = await response.text()
+                    raise GaggiuinoResponseError(response.status, body)
                 return await response.json()
 
         except ClientConnectionError as err:
             raise GaggiuinoConnectionError("Connection failed") from err
         except asyncio.TimeoutError as err:
             raise GaggiuinoConnectionTimeoutError from err
-        except GaggiuinoEndpointNotFoundError as err:
-            raise err
+        except GaggiuinoError:
+            raise
         except Exception as err:
-            raise GaggiuinoError(
-                f"Unhandled exception: {type(err)}: {str(err)}"
-            ) from err
+            raise GaggiuinoError(f"Unhandled exception: {type(err)}: {err!s}") from err
 
     async def post(self, url: str, params: dict | None = None, **kwargs) -> bool:
         """Send POST request.
@@ -260,7 +268,7 @@ class GaggiuinoAPI(GaggiuinoClient):
         if profiles is None:
             return None
 
-        self._profiles = [GaggiuinoProfile(**_) for _ in profiles]
+        self._profiles = [GaggiuinoProfile.from_dict(_) for _ in profiles]
         return self._profiles
 
     async def _select_profile(self, profile_id: int) -> bool:
@@ -317,6 +325,44 @@ class GaggiuinoAPI(GaggiuinoClient):
 
         return await self._delete_profile(profile_id=profile_id)
 
+    async def _get_profile(self, profile_id: int) -> dict | None:
+        """Get full profile definition by ID.
+
+        Args:
+            profile_id: Profile ID to retrieve
+
+        Returns:
+            Raw profile data (without 'id' — the API omits it intentionally)
+        """
+        url = f"{self.api_base}/profile/{profile_id}"
+        return await self.get(url)
+
+    async def get_profile(
+        self, profile: GaggiuinoProfile | int
+    ) -> GaggiuinoProfile | None:
+        """Retrieve a single profile's full definition (phases, recipe, stop conditions).
+
+        REST equivalent of the web UI's profile Export button.
+
+        Args:
+            profile: Profile object or profile ID
+
+        Returns:
+            Full profile or None
+        """
+        profile_id = profile
+        if isinstance(profile, GaggiuinoProfile):
+            profile_id = profile.id
+
+        data = await self._get_profile(profile_id)
+        if data is None:
+            _LOGGER.debug("Couldn't retrieve profile %s", profile_id)
+            return None
+
+        # The API intentionally omits 'id' so the profile can be re-imported
+        # without collisions; restore the requested one.
+        return GaggiuinoProfile.from_dict({**data, "id": profile_id})
+
     async def _get_shot(self, shot_id: int | Literal["latest"]) -> dict:
         """Get shot data by ID.
 
@@ -343,7 +389,36 @@ class GaggiuinoAPI(GaggiuinoClient):
             _LOGGER.debug("Couldn't retrieve shot %s", shot_id)
             return None
 
-        return GaggiuinoShot(**shot)
+        return GaggiuinoShot.from_dict(shot)
+
+    async def _delete_shot(self, shot_id: int) -> bool:
+        """Delete shot by ID.
+
+        Args:
+            shot_id: Shot ID to delete
+
+        Returns:
+            True if successful
+        """
+        url = f"{self.api_base}/shots/{shot_id}"
+        return await self.delete(url)
+
+    async def delete_shot(self, shot: GaggiuinoShot | int) -> bool:
+        """Delete a shot's data file. Irreversible.
+
+        Requires an SD card to be present on the machine.
+
+        Args:
+            shot: Shot object or shot ID
+
+        Returns:
+            True if successful
+        """
+        shot_id = shot
+        if isinstance(shot, GaggiuinoShot):
+            shot_id = shot.id
+
+        return await self._delete_shot(shot_id=shot_id)
 
     async def get_status(self) -> GaggiuinoStatus | None:
         """Retrieve system status.
@@ -372,6 +447,21 @@ class GaggiuinoAPI(GaggiuinoClient):
             return None
 
         return GaggiuinoLatestShotResult.from_dict(latest_shots[0])
+
+    async def get_maintenance(self) -> GaggiuinoMaintenance | None:
+        """Retrieve service history the machine tracks automatically.
+
+        Includes descale/backflush timestamps (epoch seconds, 0 = never)
+        and shot counters since each service.
+
+        Returns:
+            GaggiuinoMaintenance object or None
+        """
+        url = f"{self.api_base}/maintenance"
+        data: dict[str, Any] = await self.get(url)
+        if data is None:
+            return None
+        return GaggiuinoMaintenance.from_dict(data)
 
     async def update_firmware(self, version: str = "latest") -> bool:
         """Update firmware for all components.
@@ -411,7 +501,8 @@ class GaggiuinoAPI(GaggiuinoClient):
         health = await self.get_health()
         try:
             return health.get("status") == "ok"
-        except Exception as e:
+        except AttributeError as e:
+            # Unexpected response shape (not a dict)
             _LOGGER.debug("Healthy check failed: %s", e)
             return False
 
@@ -650,7 +741,6 @@ async def _main():
         _fw = await gapi.update_firmware()
         _test_profile = next((_ for _ in _profiles if _.name == 'test (copy)'), None)
         _deletion = await gapi.delete_profile(_test_profile)
-    pass
 
 
 if __name__ == '__main__':

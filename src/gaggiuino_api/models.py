@@ -1,6 +1,7 @@
 """Models for Gaggiuino"""
 
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -18,6 +19,19 @@ class GaggiuinoShotDataPoints:
     waterPumped: list[int] | None = None
     weightFlow: list[int] | None = None
 
+    @classmethod
+    def from_dict(cls, data: dict) -> GaggiuinoShotDataPoints:
+        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+
+
+def _known_fields(cls, data: dict) -> dict:
+    """Filter a dict down to the dataclass' known fields.
+
+    The firmware may add new keys over time; unknown keys must not
+    break parsing.
+    """
+    return {k: v for k, v in data.items() if k in cls.__dataclass_fields__}
+
 
 @dataclass(frozen=True)
 class GaggiuinoProfilePhaseStopCondition:
@@ -29,9 +43,13 @@ class GaggiuinoProfilePhaseStopCondition:
     },
     """
 
-    pressureAbove: int | None = None
+    pressureAbove: float | None = None
     time: int | None = None
     weight: float | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> GaggiuinoProfilePhaseStopCondition:
+        return cls(**_known_fields(cls, data))
 
 
 @dataclass(frozen=True)
@@ -39,14 +57,23 @@ class GaggiuinoProfilePhaseTarget:
     """
     'target': {
         'curve': 'INSTANT',
-        'end': 2,
+        'start': 2,
+        'end': 1.5,
         'time': 10000
     },
+
+    Field Notes:
+    - Only 'curve' is always present; 'start', 'end' and 'time' are optional
     """
 
     curve: str
-    end: int
-    time: int
+    start: float | None = None
+    end: float | None = None
+    time: int | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> GaggiuinoProfilePhaseTarget:
+        return cls(**_known_fields(cls, data))
 
 
 @dataclass(frozen=True)
@@ -62,6 +89,7 @@ class GaggiuinoProfileType:
 class GaggiuinoProfilePhase:
     """
     {
+        'name': 'Preinfusion',
         'restriction': 2,
         'skip': False,
         'stopConditions': {
@@ -78,10 +106,23 @@ class GaggiuinoProfilePhase:
     },
     """
 
-    restriction: int
-    skip: bool
-    stopConditions: GaggiuinoProfilePhaseStopCondition
-    type: GaggiuinoProfileType
+    type: Literal['FLOW', 'PRESSURE'] | str
+    restriction: float | None = None
+    skip: bool = False
+    name: str | None = None
+    target: GaggiuinoProfilePhaseTarget | None = None
+    stopConditions: GaggiuinoProfilePhaseStopCondition | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> GaggiuinoProfilePhase:
+        kwargs = _known_fields(cls, data)
+        if (target := data.get("target")) is not None:
+            kwargs["target"] = GaggiuinoProfilePhaseTarget.from_dict(target)
+        if (stop_conditions := data.get("stopConditions")) is not None:
+            kwargs["stopConditions"] = GaggiuinoProfilePhaseStopCondition.from_dict(
+                stop_conditions
+            )
+        return cls(**kwargs)
 
 
 @dataclass(frozen=True)
@@ -145,6 +186,13 @@ class GaggiuinoProfile:
     phases: list[GaggiuinoProfilePhase] | None = None
     recipe: dict[str, Any] | None = None
     waterTemperature: int | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> GaggiuinoProfile:
+        kwargs = _known_fields(cls, data)
+        if (phases := data.get("phases")) is not None:
+            kwargs["phases"] = [GaggiuinoProfilePhase.from_dict(_) for _ in phases]
+        return cls(**kwargs)
 
 
 @dataclass(frozen=True)
@@ -244,6 +292,13 @@ class GaggiuinoShot:
     profile: GaggiuinoProfile
     timestamp: int
 
+    @classmethod
+    def from_dict(cls, data: dict) -> GaggiuinoShot:
+        kwargs = _known_fields(cls, data)
+        kwargs["datapoints"] = GaggiuinoShotDataPoints.from_dict(data["datapoints"])
+        kwargs["profile"] = GaggiuinoProfile.from_dict(data["profile"])
+        return cls(**kwargs)
+
 
 @dataclass(frozen=True)
 class GaggiuinoStatus:
@@ -303,7 +358,7 @@ class GaggiuinoLatestShotResult:
     lastShotId: int
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoLatestShotResult":
+    def from_dict(data: dict) -> GaggiuinoLatestShotResult:
         """Create instance from API response dict.
 
         The API returns lastShotId as a string, so we convert it to int.
@@ -347,7 +402,7 @@ class GaggiuinoBoilerSettings:
     startupHeatDelta: int
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoBoilerSettings":
+    def from_dict(data: dict) -> GaggiuinoBoilerSettings:
         return GaggiuinoBoilerSettings(
             steamSetPoint=int(data["steamSetPoint"]),
             offsetTemp=int(data["offsetTemp"]),
@@ -401,7 +456,7 @@ class GaggiuinoSystemSettings:
     releaseChannel: int
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoSystemSettings":
+    def from_dict(data: dict) -> GaggiuinoSystemSettings:
         return GaggiuinoSystemSettings(
             pumpFlowAtZero=float(data["pumpFlowAtZero"]),
             timezoneOffsetMinutes=int(data["timezoneOffsetMinutes"]),
@@ -442,7 +497,7 @@ class GaggiuinoLedColor:
     B: int
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoLedColor":
+    def from_dict(data: dict) -> GaggiuinoLedColor:
         return GaggiuinoLedColor(
             R=int(data["R"]),
             G=int(data["G"]),
@@ -468,7 +523,7 @@ class GaggiuinoTofSettings:
     min: int
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoTofSettings":
+    def from_dict(data: dict) -> GaggiuinoTofSettings:
         return GaggiuinoTofSettings(
             max=int(data["max"]),
             min=int(data["min"]),
@@ -504,7 +559,7 @@ class GaggiuinoLedSettings:
     tof: GaggiuinoTofSettings
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoLedSettings":
+    def from_dict(data: dict) -> GaggiuinoLedSettings:
         return GaggiuinoLedSettings(
             color=GaggiuinoLedColor.from_dict(data["color"]),
             state=bool(data["state"]),
@@ -547,7 +602,7 @@ class GaggiuinoScalesSettings:
     btScalesAutoConnect: bool
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoScalesSettings":
+    def from_dict(data: dict) -> GaggiuinoScalesSettings:
         return GaggiuinoScalesSettings(
             forcePredictive=bool(data["forcePredictive"]),
             hwScalesEnabled=bool(data["hwScalesEnabled"]),
@@ -592,7 +647,7 @@ class GaggiuinoDisplaySettings:
     lcdGoHome: int
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoDisplaySettings":
+    def from_dict(data: dict) -> GaggiuinoDisplaySettings:
         return GaggiuinoDisplaySettings(
             lcdBrightness=int(data["lcdBrightness"]),
             lcdDarkMode=bool(data["lcdDarkMode"]),
@@ -627,7 +682,7 @@ class GaggiuinoThemeSettings:
     colourSecondary: int
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoThemeSettings":
+    def from_dict(data: dict) -> GaggiuinoThemeSettings:
         return GaggiuinoThemeSettings(
             colourPrimary=int(data["colourPrimary"]),
             colourSecondary=int(data["colourSecondary"]),
@@ -663,11 +718,45 @@ class GaggiuinoVersions:
     staticVersion: str
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoVersions":
+    def from_dict(data: dict) -> GaggiuinoVersions:
         return GaggiuinoVersions(
             coreVersion=str(data["coreVersion"]),
             frontVersion=str(data["frontVersion"]),
             staticVersion=str(data["staticVersion"]),
+        )
+
+
+@dataclass(frozen=True)
+class GaggiuinoMaintenance:
+    """Service history the machine tracks automatically (descale/backflush).
+
+    Response Example:
+    {
+        "lastDescaleTimestamp": 1753900000,
+        "shotsSinceDescale": 42,
+        "lastBackflushTimestamp": 1753000000,
+        "shotsSinceBackflush": 10
+    }
+
+    Field Notes:
+    - Timestamps are epoch seconds; 0 means never recorded
+    - A descale is recorded at 50% cycle progress; a backflush once pressure
+      exceeds 10 bar in flush mode for more than 2 seconds
+    - Shot counters only include extractions longer than 5 seconds
+    """
+
+    lastDescaleTimestamp: int
+    shotsSinceDescale: int
+    lastBackflushTimestamp: int
+    shotsSinceBackflush: int
+
+    @staticmethod
+    def from_dict(data: dict) -> GaggiuinoMaintenance:
+        return GaggiuinoMaintenance(
+            lastDescaleTimestamp=int(data["lastDescaleTimestamp"]),
+            shotsSinceDescale=int(data["shotsSinceDescale"]),
+            lastBackflushTimestamp=int(data["lastBackflushTimestamp"]),
+            shotsSinceBackflush=int(data["shotsSinceBackflush"]),
         )
 
 
@@ -696,7 +785,7 @@ class GaggiuinoSettings:
     versions: GaggiuinoVersions
 
     @staticmethod
-    def from_dict(data: dict) -> "GaggiuinoSettings":
+    def from_dict(data: dict) -> GaggiuinoSettings:
         return GaggiuinoSettings(
             boiler=GaggiuinoBoilerSettings.from_dict(data["boiler"]),
             system=GaggiuinoSystemSettings.from_dict(data["system"]),

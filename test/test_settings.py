@@ -1,19 +1,19 @@
 """Tests for Settings API endpoints."""
 
 import pytest
+
 from gaggiuino_api.models import (
-    GaggiuinoSettings,
     GaggiuinoBoilerSettings,
-    GaggiuinoSystemSettings,
-    GaggiuinoLedSettings,
-    GaggiuinoLedColor,
-    GaggiuinoTofSettings,
-    GaggiuinoScalesSettings,
     GaggiuinoDisplaySettings,
+    GaggiuinoLedColor,
+    GaggiuinoLedSettings,
+    GaggiuinoScalesSettings,
+    GaggiuinoSettings,
+    GaggiuinoSystemSettings,
     GaggiuinoThemeSettings,
+    GaggiuinoTofSettings,
     GaggiuinoVersions,
 )
-
 
 # Aggregate Settings Tests
 
@@ -171,9 +171,7 @@ async def test_update_system_settings(
     """Test updating system settings."""
 
     async def _mock_post(url, params=None, json_data=None, **kwargs):
-        if "/settings/system" in url:
-            return True
-        return False
+        return "/settings/system" in url
 
     monkeypatch.setattr(api_client, "post", _mock_post)
 
@@ -210,9 +208,7 @@ async def test_update_theme_settings(api_client, mock_theme_settings_data, monke
     """Test updating theme settings."""
 
     async def _mock_post(url, params=None, json_data=None, **kwargs):
-        if "/settings/theme" in url:
-            return True
-        return False
+        return "/settings/theme" in url
 
     monkeypatch.setattr(api_client, "post", _mock_post)
 
@@ -255,9 +251,7 @@ async def test_update_display_settings(
     """Test updating display settings."""
 
     async def _mock_post(url, params=None, json_data=None, **kwargs):
-        if "/settings/display" in url:
-            return True
-        return False
+        return "/settings/display" in url
 
     monkeypatch.setattr(api_client, "post", _mock_post)
 
@@ -298,9 +292,7 @@ async def test_update_scales_settings(
     """Test updating scales settings."""
 
     async def _mock_post(url, params=None, json_data=None, **kwargs):
-        if "/settings/scales" in url:
-            return True
-        return False
+        return "/settings/scales" in url
 
     monkeypatch.setattr(api_client, "post", _mock_post)
 
@@ -376,9 +368,7 @@ async def test_update_led_settings(api_client, mock_led_settings_data, monkeypat
     """Test updating LED settings."""
 
     async def _mock_post(url, params=None, json_data=None, **kwargs):
-        if "/settings/led" in url:
-            return True
-        return False
+        return "/settings/led" in url
 
     monkeypatch.setattr(api_client, "post", _mock_post)
 

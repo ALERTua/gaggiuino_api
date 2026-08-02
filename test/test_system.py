@@ -1,6 +1,7 @@
 """Tests for System API endpoints."""
 
 import pytest
+
 from gaggiuino_api import GaggiuinoStatus
 
 

@@ -1,51 +1,43 @@
-"""Integration tests for Gaggiuino API.
+"""End-to-end tests for Gaggiuino API.
 
-These tests run against real hardware and are skipped by default.
+These tests run against real hardware and are deselected by default
+(see addopts in pyproject.toml).
 To run these tests, ensure your Gaggiuino device is powered on and accessible.
 
-Run with: pytest -v -m integration test/test_integration.py
+Run with: pytest -v -m e2e test/e2e
 """
 
 import os
 import time
-import pytest
-import pytest_asyncio
 from dataclasses import replace
 
+import pytest
+
 from gaggiuino_api import (
-    GaggiuinoAPI,
+    GaggiuinoMaintenance,
     GaggiuinoProfile,
+    GaggiuinoSettings,
     GaggiuinoShot,
     GaggiuinoStatus,
-    GaggiuinoSettings,
 )
 from gaggiuino_api.models import GaggiuinoLatestShotResult
-from gaggiuino_api.const import DEFAULT_BASE_URL
 
-# Mark all tests in this module as integration tests
-pytestmark = pytest.mark.integration
-
-
-@pytest_asyncio.fixture(loop_scope="session", name="real_api_client")
-async def _real_api_client():
-    """Real API client for integration tests."""
-    base_url = os.getenv("GAGGIUINO_BASE_URL", DEFAULT_BASE_URL)
-    async with GaggiuinoAPI(base_url=base_url) as client:
-        yield client
+# Mark all tests in this module as end-to-end tests
+pytestmark = pytest.mark.e2e
 
 
 # Health Check Tests
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_health(real_api_client):
+async def test_e2e_health(real_api_client):
     """Test real health endpoint."""
     is_healthy = await real_api_client.healthy()
     assert is_healthy is True, "Gaggiuino device is not healthy or not reachable"
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_get_health(real_api_client):
+async def test_e2e_get_health(real_api_client):
     """Test real health endpoint returns status."""
     health = await real_api_client.get_health()
     assert health is not None
@@ -56,7 +48,7 @@ async def test_integration_get_health(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_get_status(real_api_client):
+async def test_e2e_get_status(real_api_client):
     """Test real system status endpoint."""
     status = await real_api_client.get_status()
     assert status is not None
@@ -69,7 +61,7 @@ async def test_integration_get_status(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_get_profiles(real_api_client):
+async def test_e2e_get_profiles(real_api_client):
     """Test real profiles endpoint."""
     profiles = await real_api_client.get_profiles()
     assert profiles is not None
@@ -79,7 +71,21 @@ async def test_integration_get_profiles(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_profile_selection(real_api_client):
+async def test_e2e_get_profile(real_api_client):
+    """Test real single profile retrieval (full definition)."""
+    profiles = await real_api_client.get_profiles()
+    assert profiles
+
+    profile = await real_api_client.get_profile(profiles[0])
+    assert profile is not None
+    assert isinstance(profile, GaggiuinoProfile)
+    assert profile.id == profiles[0].id
+    assert profile.name == profiles[0].name
+    assert profile.phases is not None
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_e2e_profile_selection(real_api_client):
     """Test profile selection with restoration.
 
     Pattern: Read -> Modify -> Verify -> Restore
@@ -120,7 +126,7 @@ async def test_integration_profile_selection(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_get_latest_shot_id(real_api_client):
+async def test_e2e_get_latest_shot_id(real_api_client):
     """Test real latest shot ID endpoint."""
     result = await real_api_client.get_latest_shot_id()
     assert result is not None
@@ -129,7 +135,7 @@ async def test_integration_get_latest_shot_id(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_get_shot(real_api_client):
+async def test_e2e_get_shot(real_api_client):
     """Test real shot retrieval."""
     # Get latest shot ID
     latest = await real_api_client.get_latest_shot_id()
@@ -143,11 +149,26 @@ async def test_integration_get_shot(real_api_client):
     assert shot.id == latest.lastShotId
 
 
+# Maintenance Tests
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_e2e_get_maintenance(real_api_client):
+    """Test real maintenance history endpoint."""
+    maintenance = await real_api_client.get_maintenance()
+    assert maintenance is not None
+    assert isinstance(maintenance, GaggiuinoMaintenance)
+    assert maintenance.lastDescaleTimestamp >= 0
+    assert maintenance.shotsSinceDescale >= 0
+    assert maintenance.lastBackflushTimestamp >= 0
+    assert maintenance.shotsSinceBackflush >= 0
+
+
 # Settings Tests - Each follows the Read -> Modify -> Verify -> Restore pattern
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_get_settings(real_api_client):
+async def test_e2e_get_settings(real_api_client):
     """Test real settings endpoint."""
     settings = await real_api_client.get_settings()
     assert settings is not None
@@ -155,7 +176,7 @@ async def test_integration_get_settings(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_boiler_settings_roundtrip(real_api_client):
+async def test_e2e_boiler_settings_roundtrip(real_api_client):
     """Test boiler settings GET/POST with restoration.
 
     Pattern: Read -> Modify -> Verify -> Restore
@@ -182,7 +203,7 @@ async def test_integration_boiler_settings_roundtrip(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_display_settings_roundtrip(real_api_client):
+async def test_e2e_display_settings_roundtrip(real_api_client):
     """Test display settings GET/POST with restoration.
 
     Pattern: Read -> Modify -> Verify -> Restore
@@ -209,7 +230,7 @@ async def test_integration_display_settings_roundtrip(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_theme_settings_roundtrip(real_api_client):
+async def test_e2e_theme_settings_roundtrip(real_api_client):
     """Test theme settings GET/POST with restoration.
 
     Pattern: Read -> Modify -> Verify -> Restore
@@ -236,7 +257,7 @@ async def test_integration_theme_settings_roundtrip(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_scales_settings_roundtrip(real_api_client):
+async def test_e2e_scales_settings_roundtrip(real_api_client):
     """Test scales settings GET/POST with restoration.
 
     Pattern: Read -> Modify -> Verify -> Restore
@@ -263,7 +284,7 @@ async def test_integration_scales_settings_roundtrip(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_led_settings_roundtrip(real_api_client):
+async def test_e2e_led_settings_roundtrip(real_api_client):
     """Test LED settings GET/POST with restoration.
 
     Pattern: Read -> Modify -> Verify -> Restore
@@ -290,7 +311,7 @@ async def test_integration_led_settings_roundtrip(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_system_settings_roundtrip(real_api_client):
+async def test_e2e_system_settings_roundtrip(real_api_client):
     """Test system settings GET/POST with restoration.
 
     Pattern: Read -> Modify -> Verify -> Restore
@@ -319,7 +340,7 @@ async def test_integration_system_settings_roundtrip(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_get_versions(real_api_client):
+async def test_e2e_get_versions(real_api_client):
     """Test versions endpoint (read-only)."""
     versions = await real_api_client.get_versions()
     assert versions is not None
@@ -332,7 +353,7 @@ async def test_integration_get_versions(real_api_client):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_integration_get_firmware_progress(real_api_client):
+async def test_e2e_get_firmware_progress(real_api_client):
     """Test firmware progress endpoint."""
     progress = await real_api_client.get_firmware_progress()
     assert progress is not None

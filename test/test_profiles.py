@@ -1,7 +1,13 @@
 """Tests for Profiles API endpoints."""
 
 import pytest
-from gaggiuino_api import GaggiuinoProfile
+
+from gaggiuino_api import (
+    GaggiuinoProfile,
+    GaggiuinoProfilePhase,
+    GaggiuinoProfilePhaseStopCondition,
+    GaggiuinoProfilePhaseTarget,
+)
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -51,8 +57,8 @@ async def test_get_profiles_empty(api_client, monkeypatch):
 
     async def _mock_get(url, params=None, json_response=True, **kwargs):
         if "/profiles/all" in url:
-            return None
-        return None
+            return
+        return
 
     monkeypatch.setattr(api_client, "get", _mock_get)
 
@@ -67,9 +73,7 @@ async def test_select_profile_by_id(api_client, monkeypatch):
     profile_id = 1
 
     async def _mock_post(url, params=None, json_data=None, **kwargs):
-        if f"/profile-select/{profile_id}" in url:
-            return True
-        return False
+        return f"/profile-select/{profile_id}" in url
 
     monkeypatch.setattr(api_client, "post", _mock_post)
 
@@ -84,9 +88,7 @@ async def test_select_profile_by_object(api_client, monkeypatch):
     profile = GaggiuinoProfile(id=1, name="Espresso")
 
     async def _mock_post(url, params=None, json_data=None, **kwargs):
-        if f"/profile-select/{profile.id}" in url:
-            return True
-        return False
+        return f"/profile-select/{profile.id}" in url
 
     monkeypatch.setattr(api_client, "post", _mock_post)
 
@@ -115,9 +117,7 @@ async def test_delete_profile_by_id(api_client, monkeypatch):
     profile_id = 1
 
     async def _mock_delete(url, params=None):
-        if f"/profile-select/{profile_id}" in url:
-            return True
-        return False
+        return f"/profile-select/{profile_id}" in url
 
     monkeypatch.setattr(api_client, "delete", _mock_delete)
 
@@ -132,9 +132,7 @@ async def test_delete_profile_by_object(api_client, monkeypatch):
     profile = GaggiuinoProfile(id=1, name="test")
 
     async def _mock_delete(url, params=None):
-        if f"/profile-select/{profile.id}" in url:
-            return True
-        return False
+        return f"/profile-select/{profile.id}" in url
 
     monkeypatch.setattr(api_client, "delete", _mock_delete)
 
@@ -155,6 +153,63 @@ async def test_delete_profile_invalid(api_client, monkeypatch):
     result = await api_client.delete_profile(99999)
 
     assert result is False
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_get_profile_by_id(api_client, mock_profile_export_data, monkeypatch):
+    """Test retrieving a full profile definition by ID."""
+    profile_id = 4
+
+    async def _mock_get(url, params=None, json_response=True, **kwargs):
+        if f"/profile/{profile_id}" in url:
+            return dict(mock_profile_export_data)
+        return None
+
+    monkeypatch.setattr(api_client, "get", _mock_get)
+
+    profile = await api_client.get_profile(profile_id)
+
+    assert profile is not None
+    assert isinstance(profile, GaggiuinoProfile)
+    # The API omits 'id'; the wrapper restores the requested one
+    assert profile.id == profile_id
+    assert profile.name == "18g Double"
+    assert profile.waterTemperature == 93
+    assert profile.recipe == {"coffeeIn": 18, "coffeeOut": 36, "ratio": 2}
+    assert len(profile.phases) == 1
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_get_profile_by_object(api_client, mock_profile_export_data, monkeypatch):
+    """Test retrieving a full profile definition by GaggiuinoProfile object."""
+    stub = GaggiuinoProfile(id=4, name="18g Double")
+
+    async def _mock_get(url, params=None, json_response=True, **kwargs):
+        if f"/profile/{stub.id}" in url:
+            return dict(mock_profile_export_data)
+        return None
+
+    monkeypatch.setattr(api_client, "get", _mock_get)
+
+    profile = await api_client.get_profile(stub)
+
+    assert profile is not None
+    assert profile.id == stub.id
+    assert profile.name == "18g Double"
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_get_profile_not_found(api_client, monkeypatch):
+    """Test retrieving a non-existent profile returns None."""
+
+    async def _mock_get(url, params=None, json_response=True, **kwargs):
+        return None
+
+    monkeypatch.setattr(api_client, "get", _mock_get)
+
+    profile = await api_client.get_profile(99999)
+
+    assert profile is None
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -198,7 +253,7 @@ async def test_profile_property_from_profiles(
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_profile_phases_parsing(api_client, mock_profiles_data, monkeypatch):
-    """Test that profile phases are available as dicts (not parsed into model objects)."""
+    """Test that profile phases are parsed into nested model objects."""
 
     async def _mock_get(url, params=None, json_response=True, **kwargs):
         if "/profiles/all" in url:
@@ -213,9 +268,37 @@ async def test_profile_phases_parsing(api_client, mock_profiles_data, monkeypatc
     profile = profiles[0]
     assert profile.phases is not None
     assert len(profile.phases) == 1
-    # Phases are passed through as dicts, not parsed into GaggiuinoProfilePhase objects
     phase = profile.phases[0]
-    assert isinstance(phase, dict)
-    assert phase["restriction"] == 2
-    assert phase["skip"] is False
-    assert phase["type"] == "FLOW"
+    assert isinstance(phase, GaggiuinoProfilePhase)
+    assert phase.restriction == 2
+    assert phase.skip is False
+    assert phase.type == "FLOW"
+    assert isinstance(phase.target, GaggiuinoProfilePhaseTarget)
+    assert phase.target.curve == "INSTANT"
+    assert phase.target.end == 2
+    assert phase.target.time == 10000
+    assert isinstance(phase.stopConditions, GaggiuinoProfilePhaseStopCondition)
+    assert phase.stopConditions.pressureAbove == 2
+    assert phase.stopConditions.time == 15000
+    assert phase.stopConditions.weight == 0.1
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_profile_phases_unknown_keys(api_client, mock_profiles_data, monkeypatch):
+    """Test that unknown keys from newer firmware don't break phase parsing."""
+    mock_profiles_data[0]["phases"][0]["someFutureKey"] = 42
+    mock_profiles_data[0]["phases"][0]["target"]["anotherFutureKey"] = "x"
+
+    async def _mock_get(url, params=None, json_response=True, **kwargs):
+        if "/profiles/all" in url:
+            return mock_profiles_data
+        return None
+
+    monkeypatch.setattr(api_client, "get", _mock_get)
+
+    profiles = await api_client.get_profiles()
+
+    assert profiles is not None
+    phase = profiles[0].phases[0]
+    assert phase.type == "FLOW"
+    assert phase.target.curve == "INSTANT"
