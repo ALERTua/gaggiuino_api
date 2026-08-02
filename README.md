@@ -9,14 +9,14 @@ Gaggiuino REST API Wrapper for Python
 - Changelog: https://github.com/ALERTua/gaggiuino_api/releases
 - PyPi: https://pypi.org/project/gaggiuino_api/
 - Home Assistant HACS Integration: https://github.com/ALERTua/hass-gaggiuino
-- API Reference: https://github.com/GAGGIUINO/gaggiuino.github.io/blob/feature/settings-api/docs/rest-api/rest-api.md
 - Gaggiuino REST API Documentation: https://gaggiuino.github.io/rest-api/rest-api.md
 
 The [Gaggiuino REST API](https://gaggiuino.github.io/#/rest-api/rest-api) Wrapper is a Python library that provides a simple and efficient way to interact with [Gaggiuino-enabled](https://gaggiuino.github.io/) espresso machines.
 This asynchronous client allows users to manage coffee profiles, retrieve shot data, and control their Gaggiuino-modified espresso machines through a REST API interface.
 
-The library offers comprehensive profile management capabilities, including retrieving and selecting brewing profiles,
-accessing historical shot data, and handling machine communication with built-in error handling and connection management.
+The library covers profiles (list, select, export, delete), shot history (retrieve, delete), live system status,
+all machine settings (boiler, system, LED, scales, display, theme — read and update), maintenance history,
+firmware updates, and health checks — with built-in error handling and connection management.
 It leverages modern Python features and async/await patterns to provide non-blocking operations, making it suitable for integration into larger applications or automation systems.
 
 ## Usage Instructions
@@ -77,7 +77,7 @@ async def profile_management():
 
             # Print phases
             for phase in profile.phases:
-                print(f"Phase Type: {phase.type.type}")
+                print(f"Phase Type: {phase.type}")
                 print(f"Restriction: {phase.restriction}")
 ```
 
@@ -103,6 +103,47 @@ async def analyze_shot():
         flow_points = shot.datapoints.pumpFlow
         temperature_points = shot.datapoints.temperature
 ```
+
+#### Machine Settings
+
+```python
+from dataclasses import replace
+
+from gaggiuino_api import GaggiuinoAPI
+
+
+async def tune_boiler():
+    async with GaggiuinoAPI() as client:
+        # All settings at once...
+        settings = await client.get_settings()
+        print(f"LCD brightness: {settings.display.lcdBrightness}")
+
+        # ...or per category, with a read-modify-update roundtrip
+        boiler = await client.get_boiler_settings()
+        await client.update_boiler_settings(replace(boiler, steamSetPoint=150))
+```
+
+#### Maintenance History
+
+```python
+from gaggiuino_api import GaggiuinoAPI
+
+
+async def service_status():
+    async with GaggiuinoAPI() as client:
+        maintenance = await client.get_maintenance()
+        print(f"Shots since descale: {maintenance.shotsSinceDescale}")
+        print(f"Shots since backflush: {maintenance.shotsSinceBackflush}")
+```
+
+### Intentionally Skipped Endpoints
+
+The wrapper covers all endpoints of the [official REST API documentation](https://gaggiuino.github.io/rest-api/rest-api.md) except these, skipped on purpose:
+
+| Endpoint | Reason |
+|---|---|
+| `POST /api/shots` | Machine-internal: the firmware itself streams shot data to storage during extraction. The body format is undocumented, and writing shots from a client risks corrupting the shot history. |
+| `POST /api/profile` | Profile import (REST equivalent of the web UI's Import button). Skipped for now; may be added on demand — open an issue if you need it. |
 
 ### Troubleshooting
 #### Connection Issues
