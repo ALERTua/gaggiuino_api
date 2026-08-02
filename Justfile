@@ -8,10 +8,13 @@ lint:
     uv run ruff format .
     uv run ruff check --fix
 
-pre:
-    uv run pre-commit run --all-files
+pre *args:
+    uv run pre-commit run {{args}}
 
-pre-update:
+pre-all *args:
+    just pre --all-files {{args}}
+
+pre-upgrade:
     uv run pre-commit autoupdate
 
 build:

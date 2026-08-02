@@ -44,7 +44,11 @@ from gaggiuino_api.tools import strtobool
 if sys.platform == "win32" and strtobool(
     os.getenv("GAGGIUINO_DISABLE_WIN_SELECTOR", "False")
 ):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    # TODO: drop the policy workaround when Python 3.16 removes it;
+    #  users should switch to asyncio.run(..., loop_factory=asyncio.SelectorEventLoop)
+    asyncio.set_event_loop_policy(  # ty: ignore[deprecated]
+        asyncio.WindowsSelectorEventLoopPolicy()
+    )
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -109,7 +113,7 @@ class GaggiuinoClient:
         *,
         json_response: bool = False,
         json_data: dict[str, Any] | None = None,
-    ) -> bool | dict[str, Any]:
+    ) -> Any:
         """Shared request handler.
 
         Args:
@@ -147,7 +151,7 @@ class GaggiuinoClient:
                 data=data,
                 headers=headers,
                 json=json_body,
-                timeout=self.timeout,
+                timeout=self._client_timeout,
             ) as response:
                 _LOGGER.debug("%s %s -> %s", method, url, response.status)
                 if response.status == 404:
@@ -163,7 +167,7 @@ class GaggiuinoClient:
 
         except ClientConnectionError as err:
             raise GaggiuinoConnectionError("Connection failed") from err
-        except asyncio.TimeoutError as err:
+        except TimeoutError as err:
             raise GaggiuinoConnectionTimeoutError from err
         except GaggiuinoError:
             raise
@@ -200,7 +204,7 @@ class GaggiuinoClient:
         params: dict | None = None,
         json_response: bool = True,
         **kwargs,
-    ) -> dict[str, Any] | list[dict[str, Any]]:
+    ) -> Any:
         """Send GET request.
 
         Args:
@@ -292,10 +296,7 @@ class GaggiuinoAPI(GaggiuinoClient):
         Returns:
             True if successful
         """
-        profile_id = profile
-        if isinstance(profile, GaggiuinoProfile):
-            profile_id = profile.id
-
+        profile_id = profile.id if isinstance(profile, GaggiuinoProfile) else profile
         return await self._select_profile(profile_id=profile_id)
 
     async def _delete_profile(self, profile_id: int) -> bool:
@@ -319,10 +320,7 @@ class GaggiuinoAPI(GaggiuinoClient):
         Returns:
             True if successful
         """
-        profile_id = profile
-        if isinstance(profile, GaggiuinoProfile):
-            profile_id = profile.id
-
+        profile_id = profile.id if isinstance(profile, GaggiuinoProfile) else profile
         return await self._delete_profile(profile_id=profile_id)
 
     async def _get_profile(self, profile_id: int) -> dict | None:
@@ -350,10 +348,7 @@ class GaggiuinoAPI(GaggiuinoClient):
         Returns:
             Full profile or None
         """
-        profile_id = profile
-        if isinstance(profile, GaggiuinoProfile):
-            profile_id = profile.id
-
+        profile_id = profile.id if isinstance(profile, GaggiuinoProfile) else profile
         data = await self._get_profile(profile_id)
         if data is None:
             _LOGGER.debug("Couldn't retrieve profile %s", profile_id)
@@ -414,10 +409,7 @@ class GaggiuinoAPI(GaggiuinoClient):
         Returns:
             True if successful
         """
-        shot_id = shot
-        if isinstance(shot, GaggiuinoShot):
-            shot_id = shot.id
-
+        shot_id = shot.id if isinstance(shot, GaggiuinoShot) else shot
         return await self._delete_shot(shot_id=shot_id)
 
     async def get_status(self) -> GaggiuinoStatus | None:
@@ -735,11 +727,14 @@ async def _main():
     async with GaggiuinoAPI() as gapi:
         _status = await gapi.get_status()
         _profiles = await gapi.get_profiles()
+        assert _profiles is not None
         _latest_shot_id_result = await gapi.get_latest_shot_id()
+        assert _latest_shot_id_result is not None
         _latest_shot_id = _latest_shot_id_result.lastShotId
         _shot = await gapi.get_shot(_latest_shot_id)
         _fw = await gapi.update_firmware()
         _test_profile = next((_ for _ in _profiles if _.name == 'test (copy)'), None)
+        assert _test_profile is not None
         _deletion = await gapi.delete_profile(_test_profile)
 
 

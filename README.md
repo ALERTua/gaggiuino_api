@@ -21,7 +21,7 @@ It leverages modern Python features and async/await patterns to provide non-bloc
 
 ## Usage Instructions
 ### Prerequisites
-- Python 3.10 or higher
+- Python 3.11 or higher
 - A running Gaggiuino-enabled espresso machine
 - Network access to the Gaggiuino device (default: http://gaggiuino.local:80)
 

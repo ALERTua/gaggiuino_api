@@ -100,6 +100,10 @@ async def test_e2e_profile_selection(real_api_client):
 
     profile_off = next((_ for _ in profiles if _.name == profile_off_name), None)
     profile_test = next((_ for _ in profiles if _.name == profile_test_name), None)
+    if profile_off is None or profile_test is None:
+        pytest.skip(
+            f"Profiles '{profile_off_name}' and '{profile_test_name}' must exist"
+        )
 
     # Get current status to know original profile
     original_status = await real_api_client.get_status()
