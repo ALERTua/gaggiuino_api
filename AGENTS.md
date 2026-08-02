@@ -1,88 +1,45 @@
-Guidelines for gaggiuino_api
+# gaggiuino_api — agent guidelines
 
-Purpose
-- This document defines how agents should work within this repository to make safe, minimal, and maintainable changes.
+Async Python wrapper (aiohttp) for the Gaggiuino espresso machine REST API.
+Published, typed library — treat the public API as stable unless breaking changes are explicitly allowed.
 
-Repository Basics
-- Language/Version: Python 3.14. Should be in sync with [Home Assistant Core pyproject.toml](https://github.com/home-assistant/core/blob/dev/pyproject.toml)
-- Python version always follows the one that Home Assistant project uses
-- Packaging: PEP 621 via pyproject.toml, src layout
-- Task runner: pre-commit
-- Testing: pytest (asyncio auto mode)
-- Lint/Format: ruff (check + format) via pre-commit
+## Facts you can't derive from the repo
 
-Core Principles
-1. Make the minimal change necessary to satisfy the issue.
-2. Keep a clear audit trail: explain findings, plan, and next steps in each response.
-3. Prefer small, focused commits/patches.
-4. Match the existing style and tooling, but propose more modern tools if necessary.
-5. Keep cross-platform safety in mind.
+- Python version policy: follows [Home Assistant Core](https://github.com/home-assistant/core/blob/dev/pyproject.toml).
+- Upstream API reference: https://gaggiuino.github.io/rest-api/rest-api.md — fetch the raw
+  markdown; the rendered site loads content via JS and scrapes empty.
+- Dev machine is Windows, CI is Linux: keep committed files LF with forward-slash paths
+  (`.gitattributes` enforces eol; platform-dependent content flip-flops CI).
+- E2E tests (test/e2e/, marker `e2e`, deselected by default) need real hardware:
+  `uv run pytest -m e2e test/e2e`. Env: `GAGGIUINO_BASE_URL`, `GAGGIUINO_PROFILE_OFF`,
+  `GAGGIUINO_PROFILE_TEST`. They must follow Read -> Modify -> Verify -> Restore —
+  never leave the machine in a modified state.
 
-Coding Standards
-- Linting/formatting: ruff is the source of truth.
-  - Run: uv run pre-commit
-  - If formatting changes are required, apply ruff format locally before committing (or propose the minimal needed edits).
-- Line length: 120 (pycodestyle), docstring code blocks line length: 88.
-- Quote style: preserve (do not churn quotes unnecessarily).
-- Keep import placement consistent; __init__.py may ignore E402.
-- Typing: Maintain or improve type hints; project is typed (py.typed present).
+## Workflow
 
-Tests
-- Run unit tests via pre-commit:
-  - asyncio mode is auto; default fixture loop scope is session.
-- Add tests only when necessary to validate a bugfix or new behavior; keep them minimal and focused.
+- Task runner is just; see Justfile or `just help` for recipes and prefer them over raw commands.
+- Verification gate for any change: `just pre-all` (ruff, ty, pytest, eof/eol fixers) — run it
+  after code changes and fix what it finds.
+- Dependencies: `uv add` / `uv add --dev`, never edit pyproject.toml by hand;
+  check outdated with `just uv-outdated`.
+- Never stage or commit unless directly asked; propose a commit message
+  (Conventional Commits) after each task instead.
+- Only the user bumps the version — never do it, only remind when a changeset looks release-worthy.
+- Ask open questions before implementing; when working through a list, show per-item
+  statuses after each item.
+- New behavior gets a short README example. Tests only where they validate a fix or new
+  behavior — minimal and focused.
 
-Files and Structure
-- Source code lives under src/gaggiuino_api/.
-- Tests live under test/.
-- Keep images, scripts, and dist artifacts as-is unless an issue requires changes.
+## Code patterns
 
-API and Backward Compatibility
-- This is a published library; treat API as stable unless the issue explicitly allows breaking changes.
-- If a change affects public interfaces, document it in README and consider version bump policy below.
+- Endpoint wrappers: methods on GaggiuinoAPI (api.py) that accept a model object or id
+  and return a model, None, or bool — follow the neighbours.
+- Models: frozen dataclasses (models.py) with `from_dict()` tolerant to unknown keys from
+  newer firmware, and `to_api_dict()` where POST is supported. Export via __init__.py
+  (`__all__` is sorted).
 
-Versioning and Releases
-- Version is defined in pyproject.toml.
-- You are not allowed to bump the version number unless directly asked.
+## Responses
 
-Documentation
-- README.md is the main documentation. Keep examples accurate and minimal.
-- If you add new behavior, update README.md with a short example.
+- Be concise. Use Markdown.
 
-Commit/PR Hygiene
-- Commit messages: concise, imperative subject line; include why when not obvious.
-- Keep diffs small and focused on the issue.
-- After each Task propose a commit message for the resulting changeset.
-
-Common Tasks Cheat Sheet
-- Add a new module:
-  - Place under src/gaggiuino_api/.
-  - Include typing and ruff-compliant style.
-  - Add minimal tests under test/ if behavior is non-trivial.
-- Fix a bug:
-  - Reproduce with a failing test when possible.
-  - Implement the smallest fix.
-  - Run `uv run pre-commit`.
-- Update docs only:
-  - Edit README.md and run lint to ensure no trailing whitespace or formatting nits.
-- If you need to add a new dependency, add it via `uv add`, and not via plain pyproject.toml edit.
-  - Don't forget to uv lock afterward.
-- To check for outdated dependencies use `uv_outdated.cmd` which is found in PATH.
-- Always ask open questions (if any) before implementing anything.
-- While working with a list of items to implement, return the actual list after each item with the actual items statuses.
-- Always run `uv run pre-commit` after implementing code changes.
-
-
-Windows Path and Shell Notes
-- Use backslashes in any paths you add to code snippets or scripts.
-- PowerShell semantics apply for shell command examples in repo scripts.
-
-Safety Checks Before Submit
-- Ensure: `uv run pre-commit` passes.
-- Ensure: changes are minimal and directly address the issue.
-
-Responces guidelines
-- Be concise.
-- Use Markdown.
-
-Last updated: 2025-10-08
+Last updated: 2026-08-02
