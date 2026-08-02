@@ -38,24 +38,24 @@ from gaggiuino_api import GaggiuinoAPI
 
 
 async def main():
-  async with GaggiuinoAPI() as client:
-    # Get the status
-    status = await client.get_status()
-    print(f"Status: {status}")
+    async with GaggiuinoAPI() as client:
+        # Get the status
+        status = await client.get_status()
+        print(f"Status: {status}")
 
-    # Get all available profiles
-    profiles = await client.get_profiles()
+        # Get all available profiles
+        profiles = await client.get_profiles()
 
-    # Select a profile by ID
-    await client.select_profile(profiles[0])
+        # Select a profile by ID
+        await client.select_profile(profiles[0])
 
-    # Get shot data
-    shot = await client.get_shot(1)
-    print(f"Shot duration: {shot.duration}ms")
+        # Get shot data
+        shot = await client.get_shot(1)
+        print(f"Shot duration: {shot.duration}ms")
 
 
 if __name__ == "__main__":
-  asyncio.run(main())
+    asyncio.run(main())
 ```
 
 ### More Detailed Examples
@@ -66,19 +66,19 @@ from gaggiuino_api import GaggiuinoAPI
 
 
 async def profile_management():
-  async with GaggiuinoAPI(base_url="http://custom.gaggiuino.local") as client:
-    # Get all profiles
-    profiles = await client.get_profiles()
+    async with GaggiuinoAPI(base_url="http://custom.gaggiuino.local") as client:
+        # Get all profiles
+        profiles = await client.get_profiles()
 
-    # Print profile details
-    for profile in profiles:
-      print(f"Profile: {profile.name} (ID: {profile.id})")
-      print(f"Water Temperature: {profile.waterTemperature}°C")
+        # Print profile details
+        for profile in profiles:
+            print(f"Profile: {profile.name} (ID: {profile.id})")
+            print(f"Water Temperature: {profile.waterTemperature}°C")
 
-      # Print phases
-      for phase in profile.phases:
-        print(f"Phase Type: {phase.type.type}")
-        print(f"Restriction: {phase.restriction}")
+            # Print phases
+            for phase in profile.phases:
+                print(f"Phase Type: {phase.type.type}")
+                print(f"Restriction: {phase.restriction}")
 ```
 
 #### Retrieving Shot Data
@@ -88,20 +88,20 @@ from gaggiuino_api import GaggiuinoAPI
 
 
 async def analyze_shot():
-  async with GaggiuinoAPI() as client:
-    latest_shot_id_result = await client.get_latest_shot_id()
-    latest_shot_id = latest_shot_id_result.lastShotId
-    shot = await client.get_shot(latest_shot_id)
+    async with GaggiuinoAPI() as client:
+        latest_shot_id_result = await client.get_latest_shot_id()
+        latest_shot_id = latest_shot_id_result.lastShotId
+        shot = await client.get_shot(latest_shot_id)
 
-    # Access shot metrics
-    print(f"Latest Shot ID: {latest_shot_id}")
-    print(f"Duration: {shot.duration}ms")
-    print(f"Timestamp: {shot.timestamp}")
+        # Access shot metrics
+        print(f"Latest Shot ID: {latest_shot_id}")
+        print(f"Duration: {shot.duration}ms")
+        print(f"Timestamp: {shot.timestamp}")
 
-    # Access datapoints
-    pressure_points = shot.datapoints.pressure
-    flow_points = shot.datapoints.pumpFlow
-    temperature_points = shot.datapoints.temperature
+        # Access datapoints
+        pressure_points = shot.datapoints.pressure
+        flow_points = shot.datapoints.pumpFlow
+        temperature_points = shot.datapoints.temperature
 ```
 
 ### Troubleshooting
@@ -109,6 +109,7 @@ async def analyze_shot():
 - Problem: Unable to connect to Gaggiuino device
   ```python
   from gaggiuino_api import GaggiuinoAPI, GaggiuinoConnectionError
+
 
   async def main():
       try:
@@ -123,6 +124,7 @@ async def analyze_shot():
 - Problem: API endpoint returns 404
   ```python
   from gaggiuino_api import GaggiuinoAPI, GaggiuinoEndpointNotFoundError
+
 
   async def main():
       try:
