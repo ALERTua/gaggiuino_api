@@ -10,6 +10,7 @@ Gaggiuino REST API Wrapper for Python
 - PyPi: https://pypi.org/project/gaggiuino_api/
 - Home Assistant HACS Integration: https://github.com/ALERTua/hass-gaggiuino
 - API Reference: https://github.com/GAGGIUINO/gaggiuino.github.io/blob/feature/settings-api/docs/rest-api/rest-api.md
+- Gaggiuino REST API Documentation: https://gaggiuino.github.io/rest-api/rest-api.md
 
 The [Gaggiuino REST API](https://gaggiuino.github.io/#/rest-api/rest-api) Wrapper is a Python library that provides a simple and efficient way to interact with [Gaggiuino-enabled](https://gaggiuino.github.io/) espresso machines.
 This asynchronous client allows users to manage coffee profiles, retrieve shot data, and control their Gaggiuino-modified espresso machines through a REST API interface.
