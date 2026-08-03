@@ -445,6 +445,9 @@ class GaggiuinoSystemSettings:
 
     Field Notes:
     - releaseChannel: 0 = stable, 1 = test, 2 = debug
+    - Fields from newer firmware (momentarySwitches, ungroupHomeTiles,
+      alternativeFlush, mqtt*) are None when the firmware doesn't report them
+      and are omitted from POSTs while None
     """
 
     pumpFlowAtZero: float
@@ -454,6 +457,15 @@ class GaggiuinoSystemSettings:
     servicesState: bool
     wifiEnabled: bool
     releaseChannel: int
+    momentarySwitches: bool | None = None
+    ungroupHomeTiles: bool | None = None
+    alternativeFlush: bool | None = None
+    mqttEnabled: bool | None = None
+    mqttHost: str | None = None
+    mqttPort: int | None = None
+    mqttUsername: str | None = None
+    mqttPassword: str | None = None
+    mqttTopicPrefix: str | None = None
 
     @staticmethod
     def from_dict(data: dict) -> GaggiuinoSystemSettings:
@@ -465,11 +477,24 @@ class GaggiuinoSystemSettings:
             servicesState=bool(data["servicesState"]),
             wifiEnabled=bool(data["wifiEnabled"]),
             releaseChannel=int(data["releaseChannel"]),
+            momentarySwitches=data.get("momentarySwitches"),
+            ungroupHomeTiles=data.get("ungroupHomeTiles"),
+            alternativeFlush=data.get("alternativeFlush"),
+            mqttEnabled=data.get("mqttEnabled"),
+            mqttHost=data.get("mqttHost"),
+            mqttPort=data.get("mqttPort"),
+            mqttUsername=data.get("mqttUsername"),
+            mqttPassword=data.get("mqttPassword"),
+            mqttTopicPrefix=data.get("mqttTopicPrefix"),
         )
 
     def to_api_dict(self) -> dict:
-        """Convert to API request format."""
-        return {
+        """Convert to API request format.
+
+        Newer-firmware fields are included only when not None, so posting to
+        older firmware doesn't send keys it doesn't know.
+        """
+        result = {
             "pumpFlowAtZero": self.pumpFlowAtZero,
             "timezoneOffsetMinutes": self.timezoneOffsetMinutes,
             "sprofilerToken": self.sprofilerToken,
@@ -478,6 +503,19 @@ class GaggiuinoSystemSettings:
             "wifiEnabled": self.wifiEnabled,
             "releaseChannel": self.releaseChannel,
         }
+        optional = {
+            "momentarySwitches": self.momentarySwitches,
+            "ungroupHomeTiles": self.ungroupHomeTiles,
+            "alternativeFlush": self.alternativeFlush,
+            "mqttEnabled": self.mqttEnabled,
+            "mqttHost": self.mqttHost,
+            "mqttPort": self.mqttPort,
+            "mqttUsername": self.mqttUsername,
+            "mqttPassword": self.mqttPassword,
+            "mqttTopicPrefix": self.mqttTopicPrefix,
+        }
+        result.update({k: v for k, v in optional.items() if v is not None})
+        return result
 
 
 @dataclass(frozen=True)
@@ -592,6 +630,8 @@ class GaggiuinoScalesSettings:
 
     Field Notes:
     - hwScalesF1, hwScalesF2: Hardware scales calibration factors
+    - btScalesPinnedMac: newer-firmware field; None when not reported,
+      omitted from POSTs while None
     """
 
     forcePredictive: bool
@@ -600,6 +640,7 @@ class GaggiuinoScalesSettings:
     hwScalesF2: int
     btScalesEnabled: bool
     btScalesAutoConnect: bool
+    btScalesPinnedMac: str | None = None
 
     @staticmethod
     def from_dict(data: dict) -> GaggiuinoScalesSettings:
@@ -610,10 +651,11 @@ class GaggiuinoScalesSettings:
             hwScalesF2=int(data["hwScalesF2"]),
             btScalesEnabled=bool(data["btScalesEnabled"]),
             btScalesAutoConnect=bool(data["btScalesAutoConnect"]),
+            btScalesPinnedMac=data.get("btScalesPinnedMac"),
         )
 
     def to_api_dict(self) -> dict:
-        return {
+        result = {
             "forcePredictive": bool(self.forcePredictive),
             "hwScalesEnabled": bool(self.hwScalesEnabled),
             "hwScalesF1": self.hwScalesF1,
@@ -621,6 +663,9 @@ class GaggiuinoScalesSettings:
             "btScalesEnabled": bool(self.btScalesEnabled),
             "btScalesAutoConnect": bool(self.btScalesAutoConnect),
         }
+        if self.btScalesPinnedMac is not None:
+            result["btScalesPinnedMac"] = self.btScalesPinnedMac
+        return result
 
 
 @dataclass(frozen=True)
@@ -639,12 +684,16 @@ class GaggiuinoDisplaySettings:
     - lcdBrightness: Screen brightness (0-100)
     - lcdSleep: Time in minutes before screen sleeps
     - lcdGoHome: Time in seconds after shot finishes to close shot graph
+    - lcdCloseOnBrewOff, simpleUI: newer-firmware fields; None when not reported,
+      omitted from POSTs while None
     """
 
     lcdBrightness: int
     lcdDarkMode: bool
     lcdSleep: int
     lcdGoHome: int
+    lcdCloseOnBrewOff: bool | None = None
+    simpleUI: bool | None = None
 
     @staticmethod
     def from_dict(data: dict) -> GaggiuinoDisplaySettings:
@@ -653,15 +702,23 @@ class GaggiuinoDisplaySettings:
             lcdDarkMode=bool(data["lcdDarkMode"]),
             lcdSleep=int(data["lcdSleep"]),
             lcdGoHome=int(data["lcdGoHome"]),
+            lcdCloseOnBrewOff=data.get("lcdCloseOnBrewOff"),
+            simpleUI=data.get("simpleUI"),
         )
 
     def to_api_dict(self) -> dict:
-        return {
+        result = {
             "lcdBrightness": self.lcdBrightness,
             "lcdDarkMode": bool(self.lcdDarkMode),
             "lcdSleep": self.lcdSleep,
             "lcdGoHome": self.lcdGoHome,
         }
+        optional = {
+            "lcdCloseOnBrewOff": self.lcdCloseOnBrewOff,
+            "simpleUI": self.simpleUI,
+        }
+        result.update({k: v for k, v in optional.items() if v is not None})
+        return result
 
 
 @dataclass(frozen=True)

@@ -15,6 +15,72 @@ from gaggiuino_api.models import (
     GaggiuinoVersions,
 )
 
+# Newer-firmware optional fields
+
+
+def test_system_settings_newer_firmware_fields(mock_system_settings_data):
+    """Test that newer-firmware system fields parse and roundtrip."""
+    data = {
+        **mock_system_settings_data,
+        "momentarySwitches": True,
+        "alternativeFlush": False,
+        "mqttEnabled": True,
+        "mqttHost": "mqtt.local",
+        "mqttPort": 1883,
+        "mqttTopicPrefix": "gaggiuino",
+    }
+
+    settings = GaggiuinoSystemSettings.from_dict(data)
+
+    assert settings.momentarySwitches is True
+    assert settings.mqttHost == "mqtt.local"
+    assert settings.mqttPort == 1883
+    # Set fields roundtrip; unset ones are omitted
+    api_dict = settings.to_api_dict()
+    assert api_dict["mqttEnabled"] is True
+    assert api_dict["alternativeFlush"] is False
+    assert "mqttUsername" not in api_dict
+    assert "ungroupHomeTiles" not in api_dict
+
+
+def test_settings_older_firmware_omits_unknown_fields(
+    mock_system_settings_data, mock_display_settings_data, mock_scales_settings_data
+):
+    """Test that models parse older-firmware payloads and don't POST unknown keys."""
+    system = GaggiuinoSystemSettings.from_dict(mock_system_settings_data)
+    display = GaggiuinoDisplaySettings.from_dict(mock_display_settings_data)
+    scales = GaggiuinoScalesSettings.from_dict(mock_scales_settings_data)
+
+    assert system.mqttEnabled is None
+    assert display.simpleUI is None
+    assert scales.btScalesPinnedMac is None
+
+    for model, new_keys in (
+        (system, ("momentarySwitches", "mqttEnabled", "mqttHost")),
+        (display, ("lcdCloseOnBrewOff", "simpleUI")),
+        (scales, ("btScalesPinnedMac",)),
+    ):
+        api_dict = model.to_api_dict()
+        for key in new_keys:
+            assert key not in api_dict
+
+
+def test_display_scales_newer_firmware_fields(
+    mock_display_settings_data, mock_scales_settings_data
+):
+    """Test newer-firmware display and scales fields parse and roundtrip."""
+    display = GaggiuinoDisplaySettings.from_dict(
+        {**mock_display_settings_data, "lcdCloseOnBrewOff": True, "simpleUI": False}
+    )
+    scales = GaggiuinoScalesSettings.from_dict(
+        {**mock_scales_settings_data, "btScalesPinnedMac": "AA:BB:CC:DD:EE:FF"}
+    )
+
+    assert display.lcdCloseOnBrewOff is True
+    assert display.to_api_dict()["simpleUI"] is False
+    assert scales.to_api_dict()["btScalesPinnedMac"] == "AA:BB:CC:DD:EE:FF"
+
+
 # Aggregate Settings Tests
 
 
