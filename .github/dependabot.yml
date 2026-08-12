@@ -1,10 +1,8 @@
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 version: 2
 registries:
   # auth for the private ALERTua/script submodule; the token lives in
   # Settings -> Secrets and variables -> Dependabot (NOT Actions)
-  # Крок 1 (ваш, бо це токен): створіть токен доступу і додайте його як Dependabot-секрет:
-  # GitHub → ваш профіль → Settings → Developer settings → Fine-grained personal access token: Repository access → тільки ALERTua/script, Permissions → Contents: Read-only.
-  # Потім у репозиторії patriotyk_styletts2_ukrainian_docker: Settings → Secrets and variables → Dependabot → New repository secret — назва, наприклад, SCRIPT_SUBMODULE_TOKEN, значення — токен. Важливо: саме в розділі Dependabot, а не Actions — це різні сховища секретів.
   github-alertua:
     type: git
     url: https://github.com
@@ -22,5 +20,13 @@ updates:
   - package-ecosystem: gitsubmodule
     directory: "/"
     registries: "*"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "pip" # See documentation for possible values
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
       interval: "weekly"
