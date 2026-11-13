@@ -3,11 +3,12 @@
 Async Python wrapper (aiohttp) for the Gaggiuino espresso machine REST API.
 Published, typed library — treat the public API as stable unless breaking changes are explicitly allowed.
 
+## Project memory
+
+Read `.claude/memory/MEMORY.md` before each task. It holds the project memory: the Python version policy, the upstream API documentation, the test machine and the plans. When a task touches a topic of an index line, read the file of that line.
+
 ## Facts you can't derive from the repo
 
-- Python version policy: follows [Home Assistant Core](https://github.com/home-assistant/core/blob/dev/pyproject.toml).
-- Upstream API reference: https://gaggiuino.github.io/rest-api/rest-api.md — fetch the raw
-  markdown; the rendered site loads content via JS and scrapes empty.
 - Dev machine is Windows, CI is Linux: keep committed files LF with forward-slash paths
   (`.gitattributes` enforces eol; platform-dependent content flip-flops CI).
 - E2E tests (test/e2e/, marker `e2e`, deselected by default) need real hardware:
@@ -42,4 +43,4 @@ Published, typed library — treat the public API as stable unless breaking chan
 
 - Be concise. Use Markdown.
 
-Last updated: 2026-08-02
+Last updated: 2026-11-13

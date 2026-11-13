@@ -20,3 +20,7 @@ tryouts*.py
 .idea
 
 plans/
+
+# Claude Code: only the project memory goes into git
+.claude/*
+!.claude/memory/
