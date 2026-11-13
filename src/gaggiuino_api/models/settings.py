@@ -31,9 +31,9 @@ class SystemSettings(Model):
     """The pump calibration: the flow of the pump at zero pressure."""
     timezone_offset_minutes: int = api("timezoneOffsetMinutes")
     """The offset of the local time zone from UTC, in minutes."""
-    sprofiler_token: str = api("sprofilerToken")
+    sprofiler_token: str = api("sprofilerToken", repr=False)
     """The API token of the sprofiler service."""
-    visualizer_token: str = api("visualizerToken")
+    visualizer_token: str = api("visualizerToken", repr=False)
     """The API token of the Visualizer service."""
     services_state: bool = api("servicesState")
     wifi_enabled: bool = api("wifiEnabled")
@@ -47,17 +47,17 @@ class SystemSettings(Model):
     alternative_flush: bool = api("alternativeFlush")
     mqtt_enabled: bool = api("mqttEnabled")
     """Turns the built-in MQTT client on or off."""
-    mqtt_host: str = api("mqttHost")
+    mqtt_host: str = api("mqttHost", repr=False)
     """The host name or IP address of the MQTT broker. Empty means no connection."""
     mqtt_port: int = api("mqttPort")
     """The port of the MQTT broker, 1883 by default."""
-    mqtt_username: str = api("mqttUsername")
+    mqtt_username: str = api("mqttUsername", repr=False)
     """The user name for the MQTT broker. Empty when the broker needs no login."""
-    mqtt_password: str = api("mqttPassword")
+    mqtt_password: str = api("mqttPassword", repr=False)
     """The password for the MQTT broker. Empty when the broker needs no login."""
     mqtt_topic_prefix: str = api("mqttTopicPrefix")
     """The prefix of each MQTT topic that the machine publishes or reads."""
-    machine_name: str | None = api("machineName", default=None)
+    machine_name: str | None = api("machineName", default=None, repr=False)
     """The name of the machine. The documentation does not describe the key."""
     min_shot_duration_seconds: int | None = api("minShotDurationSeconds", default=None)
     """The minimum duration of a shot, in seconds.
@@ -116,7 +116,7 @@ class ScalesSettings(Model):
     bt_scales_enabled: bool = api("btScalesEnabled")
     """True when the Bluetooth scales are on."""
     bt_scales_auto_connect: bool = api("btScalesAutoConnect")
-    bt_scales_pinned_mac: str = api("btScalesPinnedMac")
+    bt_scales_pinned_mac: str = api("btScalesPinnedMac", repr=False)
     """The MAC address of the Bluetooth scales that the machine connects to."""
 
 

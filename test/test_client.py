@@ -77,6 +77,16 @@ async def test_status_bad_shape(
         await client.status()
 
 
+async def test_status_of_a_list_with_two_objects_takes_the_first(
+    machine: FakeMachine, client: GaggiuinoClient
+) -> None:
+    first = load_fixture('status')[0]
+    second = first | {'profileId': '3', 'profileName': 'Other'}
+    machine.answer('GET', 'system/status', [first, second])
+    status = await client.status()
+    assert (status.profile_id, status.profile_name) == (9, '_OFF')
+
+
 async def test_maintenance(machine: FakeMachine, client: GaggiuinoClient) -> None:
     machine.answer('GET', 'maintenance', load_fixture('maintenance'))
     assert await client.maintenance() == Maintenance(

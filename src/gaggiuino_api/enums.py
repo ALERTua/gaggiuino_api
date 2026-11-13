@@ -1,11 +1,7 @@
-"""Enums of the values that the firmware sends and takes.
+"""Enums of the API.
 
-An enum that the library only reads has the member `UNKNOWN`: a value that the library
-does not know becomes `UNKNOWN`, so a newer firmware does not stop the parse.
-
-An enum that also goes back to the machine has no `UNKNOWN` member. Its model field has the
-type `TheEnum | str` or `TheEnum | int`: a known value becomes the member, and an unknown value
-stays as the raw value, so the model writes it back unchanged.
+A read-only enum maps an unknown value to `UNKNOWN`. A writable enum has no `UNKNOWN`: its
+field is `TheEnum | str` or `TheEnum | int` and keeps the raw value.
 """
 
 from enum import IntEnum, StrEnum

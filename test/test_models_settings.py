@@ -200,6 +200,37 @@ def test_unknown_release_channel_stays_raw():
     assert system.to_api()["releaseChannel"] == 7
 
 
+# The text that repr() still shows, and the keys whose values it hides.
+HIDDEN_FROM_REPR: dict[str, tuple[str, tuple[str, ...]]] = {
+    "system": (
+        "mqtt_port=1883",
+        (
+            "sprofilerToken",
+            "visualizerToken",
+            "mqttHost",
+            "mqttUsername",
+            "mqttPassword",
+            "machineName",
+        ),
+    ),
+    "scales": ("hw_scales_f1=2117", ("btScalesPinnedMac",)),
+}
+
+
+@pytest.mark.parametrize("name", HIDDEN_FROM_REPR)
+def test_repr_hides_secret_and_personal_values(name: str):
+    model, raw = CASES[name]
+    visible, hidden = HIDDEN_FROM_REPR[name]
+    parsed = model.from_api(raw)
+    shown = repr(parsed)
+    assert visible in shown
+    for alias in hidden:
+        assert raw[alias], alias
+        assert raw[alias] not in shown, alias
+        assert getattr(parsed, _name(model, alias)) == raw[alias]
+        assert parsed.to_api()[alias] == raw[alias]
+
+
 def test_models_are_frozen():
     theme = ThemeSettings.from_api(load_fixture("settings_theme"))
     name = "colour_primary"

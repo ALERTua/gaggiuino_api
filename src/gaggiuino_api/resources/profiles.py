@@ -11,8 +11,10 @@ from ..models.profiles import Profile, ProfileCreated, ProfileSummary
 def _profile_id(profile: int | ProfileSummary | Profile) -> int:
     """Return the id of a profile given as an id or as a model.
 
-    Raise `ValueError` for a `Profile` without an id.
+    Raise `ValueError` for a `Profile` without an id, and `TypeError` for a `bool`.
     """
+    if isinstance(profile, bool):
+        raise TypeError('A bool is not a profile id')
     if isinstance(profile, int):
         return profile
     if profile.id is None:
@@ -53,7 +55,8 @@ class Profiles:
         """Make a saved profile the active one: `POST /api/profile-select/<id>`.
 
         `profile` is an id or a model with an id.
-        Raise `ValueError` before any request for a `Profile` without an id.
+        Raise `ValueError` before any request for a `Profile` without an id, and
+        `TypeError` for a `bool`.
         Raise `GaggiuinoResponseError` when the profile does not exist: the
         machine answers HTTP 500 for it, not 404.
         """
@@ -76,16 +79,10 @@ class Profiles:
     async def delete(self, profile: int | ProfileSummary | Profile) -> None:
         """Delete a saved profile: `DELETE /api/profile-select/<id>`.
 
-        `profile` is an id or a model with an id.
-
-        The machine answers HTTP 200 to a delete of an id that it does not
-        have, and such a request can remove another saved profile. So this
-        method reads the list of the profiles first, and sends the delete
-        only for an id of that list.
-        Raise `ValueError` before any request for a `Profile` without an id.
-        Raise `GaggiuinoNotFoundError` with the status 404, and send no
-        delete, when the list of the machine does not have the id.
-        Raise `GaggiuinoResponseError` when the machine answers with an error.
+        The firmware answers 200 for an id that it does not have and can remove another
+        profile, so the id must be in `list()`. Otherwise raise `GaggiuinoNotFoundError`
+        and send no delete. Raise `ValueError` for a `Profile` without an id, and
+        `TypeError` for a `bool`.
         """
         profile_id = _profile_id(profile)
         if profile_id not in {saved.id for saved in await self.list()}:

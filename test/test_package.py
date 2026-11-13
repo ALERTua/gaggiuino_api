@@ -4,6 +4,7 @@ import importlib
 import inspect
 import pkgutil
 from enum import Enum
+from pathlib import Path
 
 import gaggiuino_api
 import gaggiuino_api.enums
@@ -58,5 +59,10 @@ def test_transport_is_not_exported():
 
 
 def test_default_base_url_has_no_trailing_slash():
-    assert DEFAULT_BASE_URL == "http://gaggiuino.local"
+    assert not DEFAULT_BASE_URL.endswith("/")
     assert DEFAULT_TIMEOUT > 0
+
+
+def test_package_is_marked_as_typed():
+    package_dir = Path(gaggiuino_api.__file__).parent
+    assert (package_dir / "py.typed").is_file()

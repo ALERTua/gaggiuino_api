@@ -93,7 +93,7 @@ Output:
 FLOW PhaseTarget(start=None, end=0.0, curve=<CurveType.LINEAR: 'LINEAR'>, time=None, volume=None)
 ```
 
-`profiles.list()` returns `ProfileSummary` objects with `id`, `name` and `selected`. Only `profiles.get()` returns the phases. Each of these methods takes an id or a model that has an id:
+`profiles.list()` returns `ProfileSummary` objects with `id`, `name` and `selected`. Only `profiles.get()` returns the phases. Select, create and delete a profile:
 
 ```python
 await machine.profiles.select(7)
@@ -104,7 +104,7 @@ print(created.id, created.name)
 await machine.profiles.delete(created.id)
 ```
 
-`profiles.create()` always saves a new profile with a new id and does not select it.
+`profiles.select()` and `profiles.delete()` take an id or a model that has an id. `profiles.get()` takes an id. `profiles.create()` always saves a new profile with a new id and does not select it.
 
 Warning about the delete: firmware `c929939` answers HTTP 200 to a delete of an id that it does not have. In a test, such a request removed another saved profile. So `profiles.delete()` reads the list of the profiles first. For an id that the list does not have, it raises `GaggiuinoNotFoundError` and sends no delete request. A `profiles.select()` of a missing profile raises `GaggiuinoResponseError` with status 500, because the machine does not answer 404 there.
 
@@ -210,7 +210,7 @@ True
 | `GaggiuinoConnectionTimeoutError` | The machine did not answer in time. |
 | `GaggiuinoResponseError` | The machine answered with an HTTP error status. It has `status` and `body`. |
 | `GaggiuinoNotFoundError` | A subclass of `GaggiuinoResponseError` for HTTP 404. |
-| `GaggiuinoCommandError` | The machine answered with `"success": false`. |
+| `GaggiuinoCommandError` | The machine answered with `"success": false`. It has `status`, the HTTP status of the answer. |
 | `GaggiuinoResponseFormatError` | The answer does not have the expected format. |
 
 ```python
@@ -240,7 +240,7 @@ No such shot: 404
 
 ### Shared session and timeout
 
-Give your own `aiohttp` session to share it with the rest of your application. The client does not close a session that you give. The `timeout` is in seconds, or an `aiohttp.ClientTimeout`. The default is 5 seconds.
+Give your own `aiohttp` session to share it with the rest of your application. The client does not close a session that you give. The `timeout` is in seconds, or an `aiohttp.ClientTimeout`. The default is 5 seconds. The timeout of the client replaces the timeout of a session that you give. A timeout of zero or less raises `ValueError`. A call after `close()` opens a new own session, so call `close()` again after it.
 
 ```python
 import aiohttp
