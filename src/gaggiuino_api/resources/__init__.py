@@ -2,10 +2,13 @@
 
 from .firmware import Firmware
 from .profiles import Profiles
+from .settings import SettingsGroup, SettingsResource
 from .shots import Shots
 
 __all__ = [
     'Firmware',
     'Profiles',
+    'SettingsGroup',
+    'SettingsResource',
     'Shots',
 ]
