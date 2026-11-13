@@ -1,7 +1,5 @@
 """Gaggiuino API Wrapper."""
 
-from __future__ import annotations
-
 import asyncio
 import logging
 import os
