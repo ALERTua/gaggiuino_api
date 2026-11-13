@@ -128,6 +128,16 @@ async def test_resources_work_through_client(
     ]
 
 
+async def test_settings_work_through_client(
+    machine: FakeMachine, client: GaggiuinoClient
+) -> None:
+    raw = load_fixture('settings_boiler')
+    machine.answer('GET', 'settings/boiler', raw)
+    machine.answer('POST', 'settings/boiler', {'success': True})
+    await client.settings.boiler.update(steam_set_point=130)
+    assert machine.requests[1].json == raw | {'steamSetPoint': 130}
+
+
 async def test_resources_use_caller_session(machine: FakeMachine) -> None:
     machine.answer('GET', 'shots/latest', load_fixture('shots_latest'))
     async with aiohttp.ClientSession() as session:
