@@ -13,10 +13,6 @@ class GaggiuinoConnectionTimeoutError(GaggiuinoError):
     """Gaggiuino connection error exception."""
 
 
-class GaggiuinoEndpointNotFoundError(GaggiuinoError):
-    """Gaggiuino endpoint not found exception."""
-
-
 class GaggiuinoResponseError(GaggiuinoError):
     """Gaggiuino HTTP error response exception (4xx/5xx)."""
 
