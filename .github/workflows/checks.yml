@@ -4,8 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches:
-      # api-1.0 is a temporary integration branch
-      - api-1.0
       - main
     paths-ignore:
       - '**.md'
@@ -16,8 +14,6 @@ on:
   # .github/ stays in, so that the pull requests of Dependabot for the actions also run
   pull_request:
     branches:
-      # api-1.0 is a temporary integration branch
-      - api-1.0
       - main
     paths-ignore:
       - '**.md'
