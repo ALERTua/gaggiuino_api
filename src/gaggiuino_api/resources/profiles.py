@@ -4,7 +4,7 @@ import builtins
 import dataclasses
 
 from .._transport import Transport
-from ..exceptions import GaggiuinoResponseFormatError
+from ..exceptions import GaggiuinoNotFoundError, GaggiuinoResponseFormatError
 from ..models.profiles import Profile, ProfileCreated, ProfileSummary
 
 
@@ -76,10 +76,20 @@ class Profiles:
     async def delete(self, profile: int | ProfileSummary | Profile) -> None:
         """Delete a saved profile: `DELETE /api/profile-select/<id>`.
 
-        `profile` is an id or a model with an id. The firmware refuses to
-        delete the active profile.
+        `profile` is an id or a model with an id.
+
+        The machine answers HTTP 200 to a delete of an id that it does not
+        have, and such a request can remove another saved profile. So this
+        method reads the list of the profiles first, and sends the delete
+        only for an id of that list.
         Raise `ValueError` before any request for a `Profile` without an id.
-        Raise `GaggiuinoResponseError` when the machine refuses the deletion.
+        Raise `GaggiuinoNotFoundError` with the status 404, and send no
+        delete, when the list of the machine does not have the id.
+        Raise `GaggiuinoResponseError` when the machine answers with an error.
         """
         profile_id = _profile_id(profile)
+        if profile_id not in {saved.id for saved in await self.list()}:
+            raise GaggiuinoNotFoundError(
+                404, f'The machine has no profile with the id {profile_id}'
+            )
         await self._transport.command('DELETE', f'profile-select/{profile_id}')

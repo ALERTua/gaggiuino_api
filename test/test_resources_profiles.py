@@ -132,7 +132,21 @@ async def test_create_text_answer(machine: FakeMachine, profiles: Profiles) -> N
 
 @pytest.mark.parametrize('text', ['', 'OK'])
 async def test_delete(machine: FakeMachine, profiles: Profiles, text: str) -> None:
+    machine.answer('GET', 'profiles/all', load_fixture('profiles_all'))
     machine.answer('DELETE', 'profile-select/7', text=text)
     assert await profiles.delete(7) is None
-    (request,) = machine.requests
-    assert (request.method, request.path) == ('DELETE', '/api/profile-select/7')
+    listed, deleted = machine.requests
+    assert (listed.method, listed.path) == ('GET', '/api/profiles/all')
+    assert (deleted.method, deleted.path) == ('DELETE', '/api/profile-select/7')
+
+
+async def test_delete_of_missing_id_sends_no_delete(
+    machine: FakeMachine, profiles: Profiles
+) -> None:
+    machine.answer('GET', 'profiles/all', load_fixture('profiles_all'))
+    # The real machine answers 200 to such a delete and can lose another profile.
+    machine.answer('DELETE', 'profile-select/99', text='OK')
+    with pytest.raises(GaggiuinoNotFoundError) as exc_info:
+        await profiles.delete(99)
+    assert exc_info.value.status == 404
+    assert [request.method for request in machine.requests] == ['GET']
