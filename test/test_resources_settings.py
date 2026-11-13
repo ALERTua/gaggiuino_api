@@ -22,6 +22,7 @@ from gaggiuino_api.models.settings import (
     Settings,
     SystemSettings,
     ThemeSettings,
+    TofSettings,
     Versions,
 )
 from gaggiuino_api.resources import SettingsResource
@@ -174,6 +175,28 @@ async def test_update_refuses_before_any_request(
 ) -> None:
     with pytest.raises(error, match=match):
         await settings.boiler.update(**changes)
+    assert machine.requests == []
+
+
+@pytest.mark.parametrize(
+    ('changes', 'match'),
+    [
+        ({'color': {'r': 255}}, 'LedColor.*dict'),
+        ({'color': {'R': 255, 'G': 0, 'B': 0}}, 'LedColor.*dict'),
+        ({'tof': {'max': 1, 'min': 2}}, 'TofSettings.*dict'),
+        ({'color': TofSettings(max=1, min=2)}, 'LedColor.*TofSettings'),
+        ({'color': 'red'}, 'LedColor.*str'),
+    ],
+    ids=['dict', 'dict-with-firmware-keys', 'tof-dict', 'other-model', 'str'],
+)
+async def test_update_of_a_nested_field_needs_its_model(
+    machine: FakeMachine,
+    settings: SettingsResource,
+    changes: dict[str, Any],
+    match: str,
+) -> None:
+    with pytest.raises(TypeError, match=match):
+        await settings.led.update(**changes)
     assert machine.requests == []
 
 

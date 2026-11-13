@@ -41,6 +41,12 @@ class Transport:
         if timeout is None:
             timeout = DEFAULT_TIMEOUT
         if not isinstance(timeout, aiohttp.ClientTimeout):
+            # aiohttp reads a total of zero or less as no timeout at all.
+            if isinstance(timeout, bool) or timeout <= 0:
+                raise ValueError(
+                    'The timeout must be a number above zero or a ClientTimeout, '
+                    f'not {timeout!r}'
+                )
             timeout = aiohttp.ClientTimeout(total=timeout)
         self._timeout = timeout
 
@@ -67,7 +73,8 @@ class Transport:
 
     async def get_json(self, path: str) -> Any:
         """GET `/api/<path>` and return the parsed JSON, whatever its content type."""
-        return _parse_json(await self._request('GET', path))
+        raw, _ = await self._request('GET', path)
+        return _parse_json(raw)
 
     async def command_json(
         self, method: CommandMethod, path: str, *, body: Any = None
@@ -76,8 +83,8 @@ class Transport:
 
         Raise `GaggiuinoResponseFormatError` when the answer is not valid JSON.
         """
-        answer = await self._request(method, path, body)
-        return _check_success(_parse_json(answer))
+        raw, status = await self._request(method, path, body)
+        return _check_success(_parse_json(raw), status)
 
     async def command(
         self, method: CommandMethod, path: str, *, body: Any = None
@@ -86,25 +93,35 @@ class Transport:
 
         Return the answer when it is a JSON object, else None.
         """
-        answer = await self._request(method, path, body)
+        raw, status = await self._request(method, path, body)
         try:
-            parsed = json.loads(answer)
+            parsed = json.loads(raw)
         except ValueError:
             return None
         if not isinstance(parsed, dict):
             return None
-        return _check_success(parsed)
+        return _check_success(parsed, status)
 
-    async def _request(self, method: str, path: str, body: Any = None) -> bytes:
-        """Send one request and return the raw body of a successful answer."""
+    async def _request(
+        self, method: str, path: str, body: Any = None
+    ) -> tuple[bytes, int]:
+        """Send one request and return the raw body and the status of a successful answer."""
         url = f'{self._base_url}/api/{path.lstrip("/")}'
+        session = self._ensure_session()
+        if session.closed:
+            raise GaggiuinoConnectionError(
+                f'{method} {path} failed: the session is closed'
+            )
         try:
-            async with self._ensure_session().request(
+            # The library maps each error status itself, also for a session of the caller
+            # that raises on an error status.
+            async with session.request(
                 method,
                 url,
                 json=body,
                 headers=_GET_HEADERS if method == 'GET' else _COMMAND_HEADERS,
                 timeout=self._timeout,
+                raise_for_status=False,
             ) as response:
                 raw = await response.read()
                 status = response.status
@@ -117,7 +134,7 @@ class Transport:
         _LOGGER.debug('%s %s -> %s', method, path, status)
         if status >= 400:
             _raise_for_status(status, raw)
-        return raw
+        return raw, status
 
 
 def _parse_json(raw: bytes) -> Any:
@@ -128,12 +145,34 @@ def _parse_json(raw: bytes) -> Any:
         raise GaggiuinoResponseFormatError('The answer is not valid JSON') from err
 
 
-def _check_success[T](parsed: T) -> T:
-    """Raise `GaggiuinoCommandError` for a JSON object with `"success": false`."""
-    if isinstance(parsed, dict) and parsed.get('success') is False:
-        message = parsed['error'] if 'error' in parsed else parsed.get('message', '')
-        raise GaggiuinoCommandError(str(message))
+def _check_success[T](parsed: T, status: int) -> T:
+    """Raise `GaggiuinoCommandError` for a JSON object that refuses the command.
+
+    The command is refused when `success` is JSON `false` or the string `false` in any
+    letter case. A missing key and each other value mean success.
+    """
+    if isinstance(parsed, dict) and _is_refusal(parsed.get('success')):
+        raise GaggiuinoCommandError(_refusal_message(parsed), status)
     return parsed
+
+
+def _is_refusal(success: object) -> bool:
+    """Return True for the value `false` of the key `success`, as JSON or as a string."""
+    if success is False:
+        return True
+    return isinstance(success, str) and success.lower() == 'false'
+
+
+def _refusal_message(parsed: dict[str, Any]) -> str:
+    """Return the text of `error`, else the text of `message`, else an empty string.
+
+    A `null` value and an empty string count as missing.
+    """
+    for key in ('error', 'message'):
+        value = parsed.get(key)
+        if value is not None and value != '':
+            return str(value)
+    return ''
 
 
 def _raise_for_status(status: int, raw: bytes) -> NoReturn:
@@ -145,5 +184,5 @@ def _raise_for_status(status: int, raw: bytes) -> NoReturn:
         parsed = json.loads(raw)
     except ValueError:
         parsed = None
-    _check_success(parsed)
+    _check_success(parsed, status)
     raise GaggiuinoResponseError(status, text)

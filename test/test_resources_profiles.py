@@ -105,6 +105,16 @@ async def test_profile_without_id_sends_nothing(
     assert machine.requests == []
 
 
+@pytest.mark.parametrize('method', ['select', 'delete'])
+@pytest.mark.parametrize('value', [True, False])
+async def test_bool_is_not_a_profile_id(
+    machine: FakeMachine, profiles: Profiles, method: str, value: bool
+) -> None:
+    with pytest.raises(TypeError, match='bool'):
+        await getattr(profiles, method)(value)
+    assert machine.requests == []
+
+
 @pytest.mark.parametrize('profile_id', [None, 7])
 async def test_create_sends_no_id(
     machine: FakeMachine, profiles: Profiles, profile_id: int | None

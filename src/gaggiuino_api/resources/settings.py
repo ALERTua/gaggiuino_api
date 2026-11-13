@@ -24,10 +24,12 @@ class SettingsGroup[T: Model]:
     """One writable group of the settings, for example the boiler settings.
 
     The machine replaces the whole group on each write, so `update()` and `update_from()`
-    read the group first and send it back whole with the changes laid over it. The update
-    is a read followed by a write: a change that another client makes between the two is
-    lost. Each key that the caller does not change goes back to the machine with the value
-    that the machine sent, also each key that the library does not know.
+    read the group first and send it back whole with the changes laid over it. An update
+    is not atomic: it is a read followed by a post. A change is lost when another write to
+    the same group comes between the read and the post. This holds for another client, and
+    also for a second concurrent call of the same client. Each key that the caller does
+    not change goes back to the machine with the value that the machine sent, also each
+    key that the library does not know.
     """
 
     def __init__(self, transport: Transport, group: str, model: type[T]) -> None:
@@ -45,11 +47,12 @@ class SettingsGroup[T: Model]:
         """Change the named fields and keep the rest: `POST /api/settings/<group>`.
 
         Each name is a Python field name of the model, for example `steam_set_point=130`.
-        A value is a plain value, an enum member, or a model for a nested field, for
-        example `color=LedColor(r=255, g=0, b=0)`. A changed key goes to the machine in the
-        form that the model writes, for example `"130"` as `130`.
+        A value is a plain value, an enum member, or an instance of the nested model for a
+        nested field, for example `color=LedColor(r=255, g=0, b=0)`. A changed key goes to
+        the machine in the form that the model writes, for example `"130"` as `130`.
         Raise `TypeError` before any request when no field is named, a name is not a
-        field of the model, or a nested model is of another class than the field.
+        field of the model, a nested field gets a value that is not an instance of its
+        model class (a `dict` too), or a plain field gets a model.
         Raise `ValueError` before any request for `None`, and before the write for a
         value that the model cannot read.
         Raise `GaggiuinoCommandError` when the machine refuses the write.
@@ -65,7 +68,14 @@ class SettingsGroup[T: Model]:
                 raise ValueError(
                     f'The field {name!r} of the {self._group} settings cannot be None'
                 )
-            if isinstance(value, Model) and not isinstance(value, hints[name]):
+            hint = hints[name]
+            if isinstance(hint, type) and issubclass(hint, Model):
+                if not isinstance(value, hint):
+                    raise TypeError(
+                        f'The field {name!r} of the {self._group} settings takes a '
+                        f'{hint.__name__}, not a {type(value).__name__}'
+                    )
+            elif isinstance(value, Model):
                 raise TypeError(
                     f'The field {name!r} of the {self._group} settings does not take '
                     f'a {type(value).__name__}'

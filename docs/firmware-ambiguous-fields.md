@@ -28,7 +28,7 @@ A settings update still sends each of these keys back unchanged, because it send
 
 - `display.simpleUI` is in the documentation, and the machine does not send it. The machine sends `modernUI`.
 - The documentation shows string booleans, for example `"brewDeltaState": "true"`. The machine sends JSON booleans in each settings group. `GET /api/profiles/all` sends `selected` as a string.
-- The documentation names only the 5 energy keys of the status. The status has 46 keys, and the 10 older keys are strings.
+- The documentation names only the 5 energy keys of the status. The status has 46 keys, and 8 of the 10 older keys are strings, and `brewSwitchState` and `steamSwitchState` are JSON booleans.
 - The documentation gives no response shape for `GET /api/system/status` (a list with one object), `GET /api/profiles/all`, `GET /api/shots/latest` (a list with one object) and `GET /api/shots/<id>`.
 - The documentation does not name the body of `POST /api/shots` and of `POST /api/firmware/update-all`. Version 0.x of the library sent `{"version": "latest"}` to the second one. Version 1.0 sends no body.
 - The documentation does not give the HTTP status of `{"success": false}`.

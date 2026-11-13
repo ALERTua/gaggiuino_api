@@ -33,6 +33,21 @@ async def test_latest_id_of_empty_list(machine: FakeMachine, shots: Shots) -> No
         await shots.latest_id()
 
 
+async def test_latest_id_of_a_list_with_two_objects_takes_the_first(
+    machine: FakeMachine, shots: Shots
+) -> None:
+    machine.answer('GET', 'shots/latest', [{'lastShotId': 580}, {'lastShotId': 12}])
+    assert await shots.latest_id() == 580
+
+
+async def test_latest_id_of_an_object_raises(
+    machine: FakeMachine, shots: Shots
+) -> None:
+    machine.answer('GET', 'shots/latest', {'lastShotId': 580})
+    with pytest.raises(GaggiuinoResponseFormatError):
+        await shots.latest_id()
+
+
 async def test_get(machine: FakeMachine, shots: Shots) -> None:
     fixture = load_fixture('shot')
     machine.answer('GET', 'shots/580', fixture)

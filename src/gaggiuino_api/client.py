@@ -15,7 +15,9 @@ from .resources import Firmware, Profiles, SettingsResource, Shots
 
 
 class GaggiuinoClient:
-    """Async client of one Gaggiuino machine.
+    """Async client of one machine. It keeps no state: each call asks the machine.
+
+    A session that the caller gives stays open after `close()`.
 
     ```python
     async with GaggiuinoClient("http://gaggiuino.local") as machine:
@@ -24,13 +26,6 @@ class GaggiuinoClient:
         shot_id = await machine.shots.latest_id()
         await machine.settings.boiler.update(steam_set_point=130)
     ```
-
-    Use it as an async context manager, or call `connect()` and `close()`.
-    A session that the caller gives stays open after `close()`.
-
-    The client keeps no state besides the session: each call asks the machine.
-    The resources `profiles`, `shots`, `settings` and `firmware` share the session of
-    the client.
     """
 
     profiles: Profiles
@@ -94,13 +89,10 @@ class GaggiuinoClient:
         return Maintenance.from_api(data)
 
     async def healthy(self) -> bool:
-        """Return True when the machine reports `ok`: `GET /api/health`.
+        """Return True when `GET /api/health` says ok.
 
-        The machine answers this check while its web server is up. When the
-        machine does not answer, for example during a restart after a firmware
-        update, the call raises `GaggiuinoConnectionError` or
-        `GaggiuinoConnectionTimeoutError`. A caller that polls the machine
-        through a restart catches these two errors.
+        During a restart of the machine it raises `GaggiuinoConnectionError` or
+        `GaggiuinoConnectionTimeoutError`.
         """
         data = await self._transport.get_json('health')
         return Health.from_api(data).ok

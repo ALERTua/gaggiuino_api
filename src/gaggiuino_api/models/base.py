@@ -101,16 +101,18 @@ _STRATEGIES: dict[Any, Any] = {
 
 
 @overload
-def api[T](key: str, *, default: T) -> T: ...
+def api[T](key: str, *, default: T, repr: bool = True) -> T: ...
 @overload
-def api(key: str) -> Any: ...
-def api(key: str, *, default: object = dataclasses.MISSING) -> Any:
+def api(key: str, *, repr: bool = True) -> Any: ...
+def api(key: str, *, default: object = dataclasses.MISSING, repr: bool = True) -> Any:
     """Declare a model field that the firmware calls `key`.
 
     The model reads the field from `key` and writes it back under `key`.
     Without `default` the field is required. Give `default=None` for an optional field.
+    Give `repr=False` for a field that holds a secret or a personal value, so that
+    `repr()` of the model does not show it.
     """
-    return dataclasses.field(default=default, metadata={"alias": key})
+    return dataclasses.field(default=default, repr=repr, metadata={"alias": key})
 
 
 def _check_enum_unions(cls: type, hint: object) -> None:

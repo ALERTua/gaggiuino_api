@@ -35,4 +35,4 @@ The upstream documentation is in the folder [docs/rest-api](https://github.com/G
 | `GET /api/settings` | `webUi.idleWatts` | `WebUiSettings.idle_watts` | It is the power of the idle machine. |
 | `GET /api/profile/<id>` | The optional keys of a phase, a target, the stop conditions and the recipe that the WebSocket document gives in `ProfileDto` | The optional fields of `Phase`, `PhaseTarget`, `PhaseStopConditions`, `GlobalStopConditions` and `Recipe` | The firmware leaves out a key that has a zero value, so these fields are optional. |
 
-Each key that is not in this table is described in the REST documentation, or it has the same name and meaning in the MQTT document. Such a key is a required field.
+Each key that is not in this table is described in the REST documentation, or it has the same name and meaning in the MQTT document. Such a key is a required field. The keys of [firmware-ambiguous-fields.md](firmware-ambiguous-fields.md) are the exception: their meaning is not clear.

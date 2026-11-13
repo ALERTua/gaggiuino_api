@@ -106,7 +106,37 @@ async def test_422(machine: FakeMachine, transport: Transport) -> None:
     assert (exc_info.value.status, exc_info.value.body) == (422, 'Unprocessable')
 
 
-@pytest.mark.parametrize('status', [200, 400])
+async def test_400_with_text_body(machine: FakeMachine, transport: Transport) -> None:
+    machine.answer('POST', 'settings/brew', text='Bad request', status=400)
+    with pytest.raises(GaggiuinoResponseError) as exc_info:
+        await transport.command('POST', 'settings/brew', body={'a': 1})
+    assert type(exc_info.value) is GaggiuinoResponseError
+    assert (exc_info.value.status, exc_info.value.body) == (400, 'Bad request')
+
+
+async def test_long_error_body_is_cut_in_the_text_only(
+    machine: FakeMachine, transport: Transport
+) -> None:
+    body = 'x' * 2000
+    machine.answer('GET', 'health', text=body, status=500)
+    with pytest.raises(GaggiuinoResponseError) as exc_info:
+        await transport.get_json('health')
+    assert len(exc_info.value.body) == 2000
+    assert len(str(exc_info.value)) < 600
+    assert str(exc_info.value).endswith('...')
+
+
+async def test_error_body_of_the_limit_is_not_cut(
+    machine: FakeMachine, transport: Transport
+) -> None:
+    body = 'x' * 500
+    machine.answer('GET', 'health', text=body, status=500)
+    with pytest.raises(GaggiuinoResponseError) as exc_info:
+        await transport.get_json('health')
+    assert str(exc_info.value) == f'HTTP 500: {body}'
+
+
+@pytest.mark.parametrize('status', [200, 400, 422])
 @pytest.mark.parametrize(
     ('payload', 'message'),
     [
@@ -128,6 +158,63 @@ async def test_success_false_raises_command_error(
     message: str,
 ) -> None:
     machine.answer('POST', 'settings/brew', payload, status=status)
+    with pytest.raises(GaggiuinoCommandError) as exc_info:
+        await transport.command('POST', 'settings/brew', body={'a': 1})
+    assert exc_info.value.message == message
+    assert exc_info.value.status == status
+
+
+@pytest.mark.parametrize('success', ['false', 'False', 'FALSE'])
+async def test_success_as_false_string_raises_command_error(
+    machine: FakeMachine, transport: Transport, success: str
+) -> None:
+    machine.answer('POST', 'settings/brew', {'success': success, 'error': 'No'})
+    with pytest.raises(GaggiuinoCommandError, match='No'):
+        await transport.command('POST', 'settings/brew', body={'a': 1})
+
+
+@pytest.mark.parametrize('success', [None, 0, True, 'true', ''])
+async def test_success_of_another_value_does_not_raise(
+    machine: FakeMachine, transport: Transport, success: object
+) -> None:
+    machine.answer('POST', 'settings/brew', {'success': success})
+    answer = await transport.command('POST', 'settings/brew', body={'a': 1})
+    assert answer == {'success': success}
+
+
+@pytest.mark.parametrize(
+    'payload',
+    [
+        {'success': False},
+        {'success': False, 'error': None},
+        {'success': False, 'error': None, 'message': None},
+        {'success': False, 'error': ''},
+    ],
+    ids=['no-text', 'null-error', 'null-both', 'empty-error'],
+)
+async def test_command_error_without_text_has_the_default_message(
+    machine: FakeMachine, transport: Transport, payload: dict
+) -> None:
+    machine.answer('POST', 'settings/brew', payload)
+    with pytest.raises(GaggiuinoCommandError) as exc_info:
+        await transport.command('POST', 'settings/brew', body={'a': 1})
+    assert exc_info.value.message == ''
+    assert str(exc_info.value) == 'The machine refused the command'
+
+
+@pytest.mark.parametrize(
+    ('payload', 'message'),
+    [
+        ({'success': False, 'error': 'E', 'message': 'M'}, 'E'),
+        ({'success': False, 'error': None, 'message': 'M'}, 'M'),
+        ({'success': False, 'error': '', 'message': 'M'}, 'M'),
+    ],
+    ids=['error-first', 'null-error', 'empty-error'],
+)
+async def test_command_error_message_prefers_error(
+    machine: FakeMachine, transport: Transport, payload: dict, message: str
+) -> None:
+    machine.answer('POST', 'settings/brew', payload)
     with pytest.raises(GaggiuinoCommandError) as exc_info:
         await transport.command('POST', 'settings/brew', body={'a': 1})
     assert exc_info.value.message == message
@@ -215,6 +302,52 @@ async def test_timeout(
     finally:
         await t.close()
     assert isinstance(exc_info.value.__cause__, cause)
+
+
+async def test_default_timeout_applies_without_a_timeout(
+    machine: FakeMachine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The transport reads the default when it is built, so the patch comes first.
+    monkeypatch.setattr('gaggiuino_api._transport.DEFAULT_TIMEOUT', 0.2)
+    machine.answer('GET', 'health', {}, delay=1.0)
+    t = Transport(machine.base_url)
+    try:
+        with pytest.raises(GaggiuinoConnectionTimeoutError):
+            await t.get_json('health')
+    finally:
+        await t.close()
+
+
+@pytest.mark.parametrize('timeout', [0, 0.0, -1, True, False])
+def test_timeout_of_zero_or_less_is_refused(timeout: float) -> None:
+    with pytest.raises(ValueError, match='timeout'):
+        Transport('http://127.0.0.1', timeout=timeout)
+
+
+def test_client_timeout_object_passes_unchanged() -> None:
+    timeout = aiohttp.ClientTimeout(total=0)
+    assert Transport('http://127.0.0.1', timeout=timeout)._timeout is timeout
+
+
+async def test_session_that_raises_on_error_status_keeps_the_error_mapping(
+    machine: FakeMachine,
+) -> None:
+    async with aiohttp.ClientSession(raise_for_status=True) as session:
+        t = Transport(machine.base_url, session=session)
+        with pytest.raises(GaggiuinoNotFoundError) as exc_info:
+            await t.get_json('shots/999')
+    assert (exc_info.value.status, exc_info.value.body) == (404, 'Not found')
+
+
+async def test_closed_caller_session_raises_connection_error(
+    machine: FakeMachine,
+) -> None:
+    session = aiohttp.ClientSession()
+    await session.close()
+    t = Transport(machine.base_url, session=session)
+    with pytest.raises(GaggiuinoConnectionError, match='closed'):
+        await t.get_json('health')
+    assert machine.requests == []
 
 
 async def test_refused_connection() -> None:

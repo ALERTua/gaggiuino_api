@@ -7,6 +7,7 @@ Version 1.0 renames the client, its methods, the models and some exceptions. It 
 | 0.x | 1.0 |
 |---|---|
 | `GaggiuinoAPI` | `GaggiuinoClient` |
+| `gaggiuino_api.api.GaggiuinoClient`, the HTTP base class of 0.x, which the package did not export | Removed. The `GaggiuinoClient` of 1.0 is the old `GaggiuinoAPI`. |
 | `GaggiuinoAPI.disconnect()` | `GaggiuinoClient.close()` |
 | `GaggiuinoAPI.profile` (property) | Removed. Use `status.profile_id` and `status.profile_name`. |
 | `get()`, `post()`, `delete()` of the client | Removed. |
@@ -107,3 +108,6 @@ The field `selected` of a profile moved to `ProfileSummary`. A `Profile` has no 
 - The package needs Python 3.14.2 or newer.
 - A settings update reads the whole group, changes the named fields and sends the whole group back.
 - `profiles.delete()` raises `GaggiuinoNotFoundError` without a delete request for an id that the list of the machine does not have. See the README for the reason.
+- `profiles.select()` and `profiles.delete()` raise `TypeError` for a `bool`, because a `bool` is not an id.
+- `GaggiuinoCommandError` has the attribute `status`, the HTTP status of the answer.
+- A settings `update()` takes a model, not a `dict`, for a nested field. For example, `led.update(color=LedColor(r=255, g=0, b=0))`. A `dict` raises `TypeError`.
