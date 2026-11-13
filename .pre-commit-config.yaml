@@ -1,49 +1,70 @@
+# These hooks need the project environment of uv, which the pre-commit.ci runners do not have.
+# The Checks workflow runs them instead.
+ci:
+  skip: [uv-lock, ty, pytest]
+
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v6.0.0
-  hooks:
-    - id: check-merge-conflict
-    - id: check-added-large-files
-    - id: check-builtin-literals
-    - id: check-case-conflict
-    - id: check-toml
-    - id: check-yaml
-    - id: check-docstring-first
-    - id: end-of-file-fixer
-    - id: mixed-line-ending
-    - id: trailing-whitespace
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: check-docstring-first
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
 
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.16.2
-  hooks:
-    - id: ruff
-      args: [ --fix ]
-    - id: ruff-format
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.5
+    hooks:
+      # Run the linter.
+      - id: ruff-check
+        args: [--fix]
+      # Run the formatter.
+      - id: ruff-format
 
-- repo: https://github.com/astral-sh/ty-pre-commit
-  # ty version.
-  rev: v0.0.70
-  hooks:
-    - id: ty
+  # The type checker. The rev gives the same ty version as uv.lock, and --locked keeps the lock file as it is.
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    rev: v0.0.103
+    hooks:
+      - id: ty
+        args: [--locked]
 
-# https://docs.astral.sh/uv/guides/integration/pre-commit/
-- repo: https://github.com/astral-sh/uv-pre-commit
-  rev: 0.12.3
-  hooks:
-    - id: uv-lock
+  # https://docs.astral.sh/uv/guides/integration/pre-commit/
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.13.8
+    hooks:
+      - id: uv-lock
 
-- repo: local
-  hooks:
-    - id: pytest
-      name: pytest
-      entry: uv run pytest test -m "not e2e"
-      language: system
-      pass_filenames: false
-      always_run: true
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: uv run pytest test -m "not e2e"
+        language: system
+        pass_filenames: false
+        always_run: true
 
-- repo: https://github.com/abravalheri/validate-pyproject
-  rev: v0.25
-  hooks:
-    - id: validate-pyproject
-      # Optional extra validations from SchemaStore:
-      additional_dependencies: [ "validate-pyproject-schema-store[all]" ]
+  - repo: https://github.com/abravalheri/validate-pyproject
+    rev: v0.27
+    hooks:
+      - id: validate-pyproject
+        # Optional extra validations from SchemaStore:
+        additional_dependencies: ["validate-pyproject-schema-store[all]"]
+
+  # Workflow linter: syntax, expressions, action inputs and shell scripts of the workflows
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  # Workflow security audit: https://docs.zizmor.sh
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.32.0
+    hooks:
+      - id: zizmor
+        args: [--offline, --config=.github/zizmor.yml]

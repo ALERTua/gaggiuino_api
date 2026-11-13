@@ -33,6 +33,7 @@ dev = [
     "pytest-asyncio",
     "ruff",
     "rust-just",
+    "ty",
 ]
 
 [tool.ruff]

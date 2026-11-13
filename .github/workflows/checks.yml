@@ -8,30 +8,69 @@ on:
       - main
     paths-ignore:
       - '**.md'
-      - 'images/'
-      - 'script/'
+      - 'images/**'
+      - 'script'
+      - '.github/dependabot.yml'
+
+  # .github/ stays in, so that the pull requests of Dependabot for the actions also run
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  # paths-ignore of pull_request looks at the whole diff of the pull request, so a later push of only .md files
+  # still runs everything; this job compares the push with the head before it
+  changes:
+    uses: ALERTua/ci-workflows/.github/workflows/changes.yml@v4.2.0
+    permissions:
+      contents: read # checkout of the history for the diff
+
   test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read # checkout
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14']
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10.3.3
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           version: "latest"
           python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-python: true
 
-      - name: Install dependencies
-        run: uv sync --locked --all-extras --dev
+      # --locked fails when uv.lock does not agree with pyproject.toml.
+      - name: Install the dependencies
+        run: uv sync --locked --all-extras --all-groups
 
       - name: Pre-commit on all files
         run: uv run pre-commit run --all-files
+
+  # merges a patch or minor update of Dependabot after all checks pass; a major update stays for a person
+  dependabot-merge:
+    needs: test
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    uses: ALERTua/ci-workflows/.github/workflows/dependabot-merge.yml@v4.2.0
+    permissions:
+      contents: write # merge of the pull request
+      pull-requests: write # merge of the pull request

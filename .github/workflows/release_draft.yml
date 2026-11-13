@@ -6,28 +6,33 @@ on:
     tags:
       - 'v*.*.*'
 
-permissions:
-  contents: write
-  discussions: write
+permissions: {}
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # creation of the draft release
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          tag_name: ${{ github.ref }}
-          name: '${{ github.ref }} Release Draft:'
-          body_path: .github/templates/release_template.md
-          generate_release_notes: true
-          append_body: true
-          draft: true
-          prerelease: true
+          persist-credentials: false
+
+      # gh comes with the runner; the template goes before the generated notes
+      # --verify-tag stops a manual run on a branch instead of making a tag from it
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            --verify-tag \
+            --draft \
+            --prerelease \
+            --title "$TAG Release Draft:" \
+            --notes-file .github/templates/release_template.md \
+            --generate-notes
