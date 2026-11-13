@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 def strtobool(val: str):  # distutil strtobool
     """Convert a string representation of truth to true (1) or false (0).
 

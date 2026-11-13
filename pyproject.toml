@@ -7,12 +7,16 @@ authors = [
     { name = "Alexey ALERT Rubashёff", email = "alexey.rubasheff@gmail.com" }
 ]
 classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 keywords = ["gaggiuino", "api"]
-requires-python = ">=3.11.0"
+requires-python = ">=3.14.2"
 dependencies = [
-    "aiohttp",
+    "aiohttp>=3.13.0",
+    "mashumaro>=3.17",
 ]
 
 [project.urls]
@@ -28,6 +32,7 @@ where = ["src"]
 
 [dependency-groups]
 dev = [
+    "aioresponses",
     "pre-commit-uv",
     "pytest",
     "pytest-asyncio",
