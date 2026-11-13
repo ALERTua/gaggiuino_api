@@ -1,3 +1,4 @@
+from .client import GaggiuinoClient
 from .exceptions import (
     GaggiuinoCommandError,
     GaggiuinoConnectionError,
@@ -9,6 +10,7 @@ from .exceptions import (
 )
 
 __all__ = [
+    'GaggiuinoClient',
     'GaggiuinoCommandError',
     'GaggiuinoConnectionError',
     'GaggiuinoConnectionTimeoutError',
