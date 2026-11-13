@@ -62,6 +62,13 @@ docstring-code-format = true
 docstring-code-line-length = 88
 quote-style = "preserve"
 
+[tool.ruff.lint.flake8-bugbear]
+# The model field helper returns a dataclass field, as dataclasses.field does.
+extend-immutable-calls = [
+    "gaggiuino_api.models.api",
+    "gaggiuino_api.models.base.api",
+]
+
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 88
 max-line-length = 120
