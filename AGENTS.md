@@ -12,9 +12,11 @@ Read `.claude/memory/MEMORY.md` before each task. It holds the project memory: t
 - Dev machine is Windows, CI is Linux: keep committed files LF with forward-slash paths
   (`.gitattributes` enforces eol; platform-dependent content flip-flops CI).
 - E2E tests (test/e2e/, marker `e2e`, deselected by default) need real hardware:
-  `uv run pytest -m e2e test/e2e`. Env: `GAGGIUINO_BASE_URL`, `GAGGIUINO_PROFILE_OFF`,
-  `GAGGIUINO_PROFILE_TEST`. They must follow Read -> Modify -> Verify -> Restore —
-  never leave the machine in a modified state.
+  `uv run pytest -m e2e test/e2e`. Env: `GAGGIUINO_BASE_URL` (default `http://gaggiuino.local`).
+  They follow Read -> Modify -> Verify -> Restore: never leave the machine in a modified state.
+  A test writes only the `led` and `display` settings groups and deletes only the profile copy
+  that it created. It never sends a DELETE for an id that the machine does not have, never calls
+  `firmware.update()` and never deletes a shot.
 
 ## Workflow
 
@@ -33,11 +35,13 @@ Read `.claude/memory/MEMORY.md` before each task. It holds the project memory: t
 
 ## Code patterns
 
-- Endpoint wrappers: methods on GaggiuinoAPI (api.py) that accept a model object or id
-  and return a model, None, or bool — follow the neighbours.
-- Models: frozen dataclasses (models.py) with `from_dict()` tolerant to unknown keys from
-  newer firmware, and `to_api_dict()` where POST is supported. Export via __init__.py
-  (`__all__` is sorted).
+- Resources: classes in `resources/` that take the transport, for example `Profiles` and `Shots`.
+  A method accepts a model object or an id and returns a model, an `int` or `None`. A failure
+  raises an exception from `exceptions.py`. Follow the neighbours.
+- Models: frozen dataclasses in `models/` on the base class `Model`. Each field is declared with
+  `api("firmwareName")`, and the model has `from_api()` (tolerant to unknown keys from newer
+  firmware) and `to_api()`.
+- Public names are exported in `__init__.py` (`__all__` is sorted).
 
 ## Responses
 
