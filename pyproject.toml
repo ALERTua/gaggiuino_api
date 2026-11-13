@@ -3,6 +3,7 @@ name = "gaggiuino_api"
 version = "0.2.1"
 description = "Gaggiuino REST Api Wrapper"
 readme = "README.md"
+license-files = ["LICENSE"]
 authors = [
     { name = "Alexey ALERT Rubashёff", email = "alexey.rubasheff@gmail.com" }
 ]
@@ -24,11 +25,9 @@ homepage = "https://github.com/ALERTua/gaggiuino_api"
 repository = "https://github.com/ALERTua/gaggiuino_api"
 documentation = "https://github.com/ALERTua/gaggiuino_api"
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
