@@ -1,13 +1,14 @@
 """Tests of the HTTP transport: URLs, JSON parsing, error mapping and the session lifecycle."""
 
 import logging
+import socket
 from collections.abc import AsyncIterator
 
 import aiohttp
 import pytest
-from aioresponses import aioresponses
-from yarl import URL
+import pytest_asyncio
 
+from conftest import FakeMachine
 from gaggiuino_api import (
     GaggiuinoCommandError,
     GaggiuinoConnectionError,
@@ -18,89 +19,91 @@ from gaggiuino_api import (
 )
 from gaggiuino_api._transport import Transport
 
-BASE = 'http://gaggiuino.test'
 
-
-@pytest.fixture
-async def transport() -> AsyncIterator[Transport]:
-    t = Transport(BASE)
+@pytest_asyncio.fixture(loop_scope='function')
+async def transport(machine: FakeMachine) -> AsyncIterator[Transport]:
+    t = Transport(machine.base_url, timeout=5)
     yield t
     await t.close()
 
 
-@pytest.mark.parametrize('base_url', [BASE, f'{BASE}/'])
+@pytest.mark.parametrize('suffix', ['', '/'])
 async def test_base_url_with_and_without_trailing_slash(
-    mocked: aioresponses, base_url: str
+    machine: FakeMachine, suffix: str
 ) -> None:
-    mocked.get(f'{BASE}/api/health', payload={'ok': True})
-    t = Transport(base_url)
+    machine.answer('GET', 'health', {'ok': True})
+    t = Transport(machine.base_url + suffix)
     try:
         assert await t.get_json('health') == {'ok': True}
     finally:
         await t.close()
+    assert t.base_url == machine.base_url
+    assert [r.path for r in machine.requests] == ['/api/health']
+
+
+async def test_get_sends_accept_json_and_no_body(
+    machine: FakeMachine, transport: Transport
+) -> None:
+    machine.answer('GET', 'health', {})
+    await transport.get_json('health')
+    (request,) = machine.requests
+    assert request.method == 'GET'
+    assert request.headers['Accept'] == 'application/json'
+    assert request.raw == b''
 
 
 async def test_get_json_of_attachment(
-    mocked: aioresponses, transport: Transport
+    machine: FakeMachine, transport: Transport
 ) -> None:
-    mocked.get(
-        f'{BASE}/api/profile/4',
-        payload={'name': '18g Double'},
+    machine.answer(
+        'GET',
+        'profile/4',
+        {'name': '18g Double'},
         headers={'Content-Disposition': 'attachment; filename="profile.json"'},
     )
     assert await transport.get_json('profile/4') == {'name': '18g Double'}
 
 
 async def test_get_json_with_wrong_content_type(
-    mocked: aioresponses, transport: Transport
+    machine: FakeMachine, transport: Transport
 ) -> None:
-    mocked.get(
-        f'{BASE}/api/shots/latest', body='[{"id": 7}]', content_type='text/plain'
-    )
+    machine.answer('GET', 'shots/latest', text='[{"id": 7}]')
     assert await transport.get_json('shots/latest') == [{'id': 7}]
 
 
 async def test_get_json_invalid_json(
-    mocked: aioresponses, transport: Transport
+    machine: FakeMachine, transport: Transport
 ) -> None:
-    mocked.get(f'{BASE}/api/health', body='not json', content_type='application/json')
+    machine.answer(
+        'GET', 'health', text='not json', headers={'Content-Type': 'application/json'}
+    )
     with pytest.raises(GaggiuinoResponseFormatError) as exc_info:
         await transport.get_json('health')
     assert isinstance(exc_info.value.__cause__, ValueError)
 
 
-async def test_404_with_text_body(mocked: aioresponses, transport: Transport) -> None:
-    mocked.get(
-        f'{BASE}/api/shots/999', status=404, body='Not Found', content_type='text/plain'
-    )
+async def test_404_of_unknown_endpoint(
+    machine: FakeMachine, transport: Transport
+) -> None:
     with pytest.raises(GaggiuinoNotFoundError) as exc_info:
         await transport.get_json('shots/999')
-    assert (exc_info.value.status, exc_info.value.body) == (404, 'Not Found')
+    assert (exc_info.value.status, exc_info.value.body) == (404, 'Not found')
 
 
-async def test_500_with_text_body(mocked: aioresponses, transport: Transport) -> None:
-    mocked.post(
-        f'{BASE}/api/profile',
-        status=500,
-        body='Failed to save',
-        content_type='text/plain',
-    )
+async def test_500_with_text_body(machine: FakeMachine, transport: Transport) -> None:
+    machine.answer('POST', 'profile', text='Failed to save', status=500)
     with pytest.raises(GaggiuinoResponseError) as exc_info:
         await transport.command_json('POST', 'profile', body={'name': 'x'})
     assert type(exc_info.value) is GaggiuinoResponseError
     assert (exc_info.value.status, exc_info.value.body) == (500, 'Failed to save')
 
 
-async def test_422(mocked: aioresponses, transport: Transport) -> None:
-    mocked.post(
-        f'{BASE}/api/profile',
-        status=422,
-        body='Unprocessable',
-        content_type='text/plain',
-    )
+async def test_422(machine: FakeMachine, transport: Transport) -> None:
+    machine.answer('POST', 'profile', text='Unprocessable', status=422)
     with pytest.raises(GaggiuinoResponseError) as exc_info:
         await transport.command_json('POST', 'profile', body={})
-    assert exc_info.value.status == 422
+    assert type(exc_info.value) is GaggiuinoResponseError
+    assert (exc_info.value.status, exc_info.value.body) == (422, 'Unprocessable')
 
 
 @pytest.mark.parametrize('status', [200, 400])
@@ -118,109 +121,133 @@ async def test_422(mocked: aioresponses, transport: Transport) -> None:
     ],
 )
 async def test_success_false_raises_command_error(
-    mocked: aioresponses, transport: Transport, status: int, payload: dict, message: str
+    machine: FakeMachine,
+    transport: Transport,
+    status: int,
+    payload: dict,
+    message: str,
 ) -> None:
-    mocked.post(f'{BASE}/api/settings/brew', status=status, payload=payload)
+    machine.answer('POST', 'settings/brew', payload, status=status)
     with pytest.raises(GaggiuinoCommandError) as exc_info:
         await transport.command('POST', 'settings/brew', body={'a': 1})
     assert exc_info.value.message == message
 
 
 async def test_success_false_in_required_json(
-    mocked: aioresponses, transport: Transport
+    machine: FakeMachine, transport: Transport
 ) -> None:
-    mocked.post(
-        f'{BASE}/api/firmware/update-all',
-        payload={'success': False, 'message': 'Failed'},
+    machine.answer(
+        'POST', 'firmware/update-all', {'success': False, 'message': 'Failed'}
     )
     with pytest.raises(GaggiuinoCommandError, match='Failed'):
         await transport.command_json('POST', 'firmware/update-all')
 
 
 async def test_command_returns_json_object(
-    mocked: aioresponses, transport: Transport
+    machine: FakeMachine, transport: Transport
 ) -> None:
-    mocked.post(f'{BASE}/api/settings/brew', payload={'success': True})
+    machine.answer('POST', 'settings/brew', {'success': True})
     assert await transport.command('POST', 'settings/brew', body={'a': 1}) == {
         'success': True
     }
 
 
-@pytest.mark.parametrize('body', ['', 'OK', '[1]'])
+@pytest.mark.parametrize('text', ['', 'OK', '[1]'])
 async def test_command_returns_none_for_empty_or_non_object_body(
-    mocked: aioresponses, transport: Transport, body: str
+    machine: FakeMachine, transport: Transport, text: str
 ) -> None:
-    mocked.delete(f'{BASE}/api/shots/7', body=body, content_type='text/plain')
+    machine.answer('DELETE', 'shots/7', text=text)
     assert await transport.command('DELETE', 'shots/7') is None
+    (request,) = machine.requests
+    assert request.method == 'DELETE'
 
 
 async def test_command_json_requires_json(
-    mocked: aioresponses, transport: Transport
+    machine: FakeMachine, transport: Transport
 ) -> None:
-    mocked.post(f'{BASE}/api/profile', body='', content_type='text/plain')
+    machine.answer('POST', 'profile', text='')
     with pytest.raises(GaggiuinoResponseFormatError):
         await transport.command_json('POST', 'profile', body={'name': 'x'})
 
 
-async def test_post_sends_json_body(mocked: aioresponses, transport: Transport) -> None:
-    url = f'{BASE}/api/profile'
-    mocked.post(url, payload={'id': 4, 'name': '18g Double'})
+async def test_post_sends_json_body(machine: FakeMachine, transport: Transport) -> None:
+    machine.answer('POST', 'profile', {'id': 4, 'name': '18g Double'})
     assert await transport.command_json(
         'POST', 'profile', body={'name': '18g Double'}
-    ) == {
-        'id': 4,
-        'name': '18g Double',
-    }
-    (call,) = mocked.requests[('POST', URL(url))]
-    assert call.kwargs['json'] == {'name': '18g Double'}
-    assert call.kwargs.get('data') is None
-    assert call.kwargs['headers']['Content-Type'] == 'application/json'
+    ) == {'id': 4, 'name': '18g Double'}
+    (request,) = machine.requests
+    assert (request.method, request.path) == ('POST', '/api/profile')
+    assert request.json == {'name': '18g Double'}
+    assert request.headers['Content-Type'] == 'application/json'
+    assert request.headers['Accept'] == 'application/json'
 
 
 async def test_post_without_body_declares_json(
-    mocked: aioresponses, transport: Transport
+    machine: FakeMachine, transport: Transport
 ) -> None:
-    url = f'{BASE}/api/profile-select/4'
-    mocked.post(url, body='')
+    machine.answer('POST', 'profile-select/4', text='')
     await transport.command('POST', 'profile-select/4')
-    (call,) = mocked.requests[('POST', URL(url))]
-    assert call.kwargs['json'] is None
-    assert call.kwargs.get('data') is None
-    assert call.kwargs['headers']['Content-Type'] == 'application/json'
+    (request,) = machine.requests
+    assert request.raw == b''
+    assert request.headers['Content-Type'] == 'application/json'
+    assert request.headers['Accept'] == 'application/json'
 
 
-@pytest.mark.parametrize('exception', [TimeoutError(), aiohttp.ServerTimeoutError()])
+@pytest.mark.parametrize(
+    ('timeout', 'cause'),
+    [
+        # aiohttp raises a plain TimeoutError for the total time
+        (0.2, TimeoutError),
+        # and a TimeoutError that is also a ClientError for a read of the socket
+        (aiohttp.ClientTimeout(sock_read=0.2), aiohttp.ServerTimeoutError),
+    ],
+)
 async def test_timeout(
-    mocked: aioresponses, transport: Transport, exception: Exception
+    machine: FakeMachine,
+    timeout: float | aiohttp.ClientTimeout,
+    cause: type[Exception],
 ) -> None:
-    mocked.get(f'{BASE}/api/health', exception=exception)
-    with pytest.raises(GaggiuinoConnectionTimeoutError) as exc_info:
-        await transport.get_json('health')
-    assert exc_info.value.__cause__ is exception
+    machine.answer('GET', 'health', {}, delay=5)
+    t = Transport(machine.base_url, timeout=timeout)
+    try:
+        with pytest.raises(GaggiuinoConnectionTimeoutError) as exc_info:
+            await t.get_json('health')
+    finally:
+        await t.close()
+    assert isinstance(exc_info.value.__cause__, cause)
 
 
-async def test_refused_connection(mocked: aioresponses, transport: Transport) -> None:
-    err = aiohttp.ClientConnectionError('Connection refused')
-    mocked.get(f'{BASE}/api/health', exception=err)
-    with pytest.raises(GaggiuinoConnectionError) as exc_info:
-        await transport.get_json('health')
-    assert exc_info.value.__cause__ is err
+async def test_refused_connection() -> None:
+    # Nothing listens on a port that was free a moment ago. Windows retries a refused
+    # connection for about 2 seconds, so the timeout is much longer than that.
+    with socket.socket() as sock:
+        sock.bind(('127.0.0.1', 0))
+        port = sock.getsockname()[1]
+    t = Transport(f'http://127.0.0.1:{port}', timeout=15)
+    try:
+        with pytest.raises(GaggiuinoConnectionError) as exc_info:
+            await t.get_json('health')
+    finally:
+        await t.close()
+    assert isinstance(exc_info.value.__cause__, aiohttp.ClientConnectorError)
 
 
 async def test_debug_log_has_no_body(
-    mocked: aioresponses, transport: Transport, caplog: pytest.LogCaptureFixture
+    machine: FakeMachine, transport: Transport, caplog: pytest.LogCaptureFixture
 ) -> None:
-    mocked.post(f'{BASE}/api/settings/system', payload={'success': True})
+    machine.answer('POST', 'settings/system', {'success': True})
     with caplog.at_level(logging.DEBUG, logger='gaggiuino_api'):
         await transport.command('POST', 'settings/system', body={'password': 'hunter2'})
     assert 'POST settings/system -> 200' in caplog.text
     assert 'hunter2' not in caplog.text
     assert 'success' not in caplog.text
+    (request,) = machine.requests
+    assert request.json == {'password': 'hunter2'}
 
 
-async def test_request_opens_own_session(mocked: aioresponses) -> None:
-    mocked.get(f'{BASE}/api/health', payload={})
-    t = Transport(BASE)
+async def test_request_opens_own_session(machine: FakeMachine) -> None:
+    machine.answer('GET', 'health', {})
+    t = Transport(machine.base_url)
     await t.get_json('health')
     session = t._session
     assert session is not None
@@ -228,11 +255,13 @@ async def test_request_opens_own_session(mocked: aioresponses) -> None:
     assert session.closed
 
 
-async def test_caller_session_stays_open(mocked: aioresponses) -> None:
-    mocked.get(f'{BASE}/api/health', payload={})
+async def test_caller_session_stays_open(machine: FakeMachine) -> None:
+    machine.answer('GET', 'health', {})
     async with aiohttp.ClientSession() as session:
-        t = Transport(BASE, session=session)
+        t = Transport(machine.base_url, session=session)
         await t.open()
         await t.get_json('health')
         await t.close()
         assert not session.closed
+        assert t._session is session
+    assert len(machine.requests) == 1

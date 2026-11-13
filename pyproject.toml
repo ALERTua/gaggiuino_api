@@ -32,7 +32,6 @@ where = ["src"]
 
 [dependency-groups]
 dev = [
-    "aioresponses",
     "pre-commit-uv",
     "pytest",
     "pytest-asyncio",

@@ -8,24 +8,32 @@ from pathlib import Path
 import aiohttp
 
 import gaggiuino_api
+from conftest import FakeMachine
 from gaggiuino_api import GaggiuinoClient
 
 
-async def test_async_with_closes_own_session() -> None:
-    async with GaggiuinoClient('http://gaggiuino.test/', timeout=1) as client:
+async def test_async_with_closes_own_session(machine: FakeMachine) -> None:
+    machine.answer('GET', 'health', {'ok': True})
+    async with GaggiuinoClient(f'{machine.base_url}/', timeout=1) as client:
         assert isinstance(client, GaggiuinoClient)
         session = client._transport._session
         assert session is not None
         assert not session.closed
+        assert await client._transport.get_json('health') == {'ok': True}
     assert session.closed
+    assert [r.path for r in machine.requests] == ['/api/health']
 
 
-async def test_caller_session_stays_open_after_close() -> None:
+async def test_caller_session_stays_open_after_close(machine: FakeMachine) -> None:
+    machine.answer('GET', 'health', {})
     async with aiohttp.ClientSession() as session:
-        client = GaggiuinoClient(session=session)
+        client = GaggiuinoClient(machine.base_url, session=session)
         await client.connect()
+        await client._transport.get_json('health')
         await client.close()
         assert not session.closed
+        assert client._transport._session is session
+    assert len(machine.requests) == 1
 
 
 def test_import_sets_no_event_loop_policy() -> None:

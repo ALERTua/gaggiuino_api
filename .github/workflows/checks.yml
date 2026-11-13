@@ -99,7 +99,7 @@ jobs:
         run: uv pip install --resolution lowest-direct -e .
 
       - name: Install the test tools
-        run: uv pip install pytest pytest-asyncio aioresponses
+        run: uv pip install pytest pytest-asyncio
 
       - name: Show the installed versions
         run: uv pip freeze
