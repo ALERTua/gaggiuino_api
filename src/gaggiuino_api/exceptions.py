@@ -23,7 +23,11 @@ class GaggiuinoResponseError(GaggiuinoError):
 
 
 class GaggiuinoNotFoundError(GaggiuinoResponseError):
-    """The machine answered with HTTP 404, for example for a shot or a profile that does not exist."""
+    """The machine answered with HTTP 404, for example for a shot or a profile that does not exist.
+
+    The delete of a profile also raises it, before the delete request, when
+    the list of the machine does not have the profile.
+    """
 
 
 class GaggiuinoCommandError(GaggiuinoError):
