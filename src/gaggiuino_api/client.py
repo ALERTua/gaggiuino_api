@@ -11,7 +11,7 @@ from .exceptions import GaggiuinoResponseFormatError
 from .models.health import Health
 from .models.maintenance import Maintenance
 from .models.status import Status
-from .resources import Firmware, Profiles, Shots
+from .resources import Firmware, Profiles, SettingsResource, Shots
 
 
 class GaggiuinoClient:
@@ -22,19 +22,23 @@ class GaggiuinoClient:
         status = await machine.status()
         profiles = await machine.profiles.list()
         shot_id = await machine.shots.latest_id()
+        await machine.settings.boiler.update(steam_set_point=130)
     ```
 
     Use it as an async context manager, or call `connect()` and `close()`.
     A session that the caller gives stays open after `close()`.
 
     The client keeps no state besides the session: each call asks the machine.
-    The resources `profiles`, `shots` and `firmware` share the session of the client.
+    The resources `profiles`, `shots`, `settings` and `firmware` share the session of
+    the client.
     """
 
     profiles: Profiles
     """The saved profiles of the machine."""
     shots: Shots
     """The saved shots of the machine."""
+    settings: SettingsResource
+    """The settings of the machine."""
     firmware: Firmware
     """The firmware update of the machine."""
 
@@ -48,6 +52,7 @@ class GaggiuinoClient:
         self._transport = Transport(base_url, session=session, timeout=timeout)
         self.profiles = Profiles(self._transport)
         self.shots = Shots(self._transport)
+        self.settings = SettingsResource(self._transport)
         self.firmware = Firmware(self._transport)
 
     async def connect(self) -> None:
