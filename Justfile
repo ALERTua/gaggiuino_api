@@ -7,14 +7,12 @@ set windows-shell := ["cmd", "/c"]
 lint:
     uv run ruff format .
     uv run ruff check --fix
+    uv run pre-commit run ty --all-files
 
-pre *args:
-    uv run pre-commit run {{args}}
+pre:
+    uv run pre-commit run --all-files
 
-pre-all *args:
-    just pre --all-files {{args}}
-
-pre-upgrade:
+pre-update:
     uv run pre-commit autoupdate
 
 build:
@@ -23,7 +21,16 @@ build:
     uv build
 
 install:
-    uv sync --dev --upgrade
+    uv sync --all-groups
+
+upgrade:
+    uv sync --all-groups --upgrade
+
+test:
+    uv run pytest
+
+test-e2e:
+    uv run pytest -m e2e
 
 uv-outdated *args:
     uv tree -d 1 --universal --outdated {{args}}

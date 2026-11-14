@@ -1,319 +1,118 @@
-"""Shared fixtures for Gaggiuino API tests."""
+"""Shared fixtures of the tests."""
 
-from unittest.mock import AsyncMock, MagicMock
+import asyncio
+import json
+from collections import defaultdict, deque
+from collections.abc import AsyncIterator, Mapping
+from dataclasses import dataclass, field
+from typing import Any
 
-import pytest
 import pytest_asyncio
-from aiohttp import ClientSession
+from aiohttp import web
+from aiohttp.test_utils import TestServer
+from multidict import CIMultiDictProxy
 
-from gaggiuino_api import GaggiuinoAPI
-
-pytest_plugins = ("pytest_asyncio",)
-
-# Mock data fixtures
+_NO_JSON: Any = object()
 
 
-@pytest.fixture
-def mock_status_data():
-    """Mock status response data."""
-    return [
-        {
-            "upTime": "89107",
-            "profileId": "7",
-            "profileName": "OFF",
-            "targetTemperature": "15.000000",
-            "temperature": "22.500000",
-            "pressure": "-0.028054",
-            "waterLevel": "100",
-            "weight": "0.000000",
-            "brewSwitchState": False,
-            "steamSwitchState": False,
-        }
-    ]
+@dataclass(frozen=True)
+class Answer:
+    """One answer of the fake machine."""
+
+    body: bytes
+    status: int
+    headers: Mapping[str, str]
+    delay: float
 
 
-@pytest.fixture
-def mock_profiles_data():
-    """Mock profiles response data."""
-    return [
-        {
-            "id": 1,
-            "name": "Espresso",
-            "selected": True,
-            "globalStopConditions": {"weight": 50},
-            "phases": [
-                {
-                    "restriction": 2,
-                    "skip": False,
-                    "stopConditions": {
-                        "pressureAbove": 2,
-                        "time": 15000,
-                        "weight": 0.1,
-                    },
-                    "target": {"curve": "INSTANT", "end": 2, "time": 10000},
-                    "type": "FLOW",
-                }
-            ],
-            "recipe": {},
-            "waterTemperature": 90,
-        },
-        {
-            "id": 2,
-            "name": "_OFF",
-            "selected": False,
-            "globalStopConditions": {},
-            "phases": [],
-            "recipe": {},
-            "waterTemperature": 0,
-        },
-    ]
+@dataclass(frozen=True)
+class Request:
+    """One request as the fake machine received it."""
+
+    method: str
+    path: str
+    """The full path, for example `/api/health`."""
+    headers: CIMultiDictProxy[str]
+    raw: bytes
+    json: Any
+    """The decoded JSON body, or None when the body is empty or not JSON."""
 
 
-@pytest.fixture
-def mock_shot_data():
-    """Mock shot response data."""
-    return {
-        "datapoints": {
-            "pressure": [3, 3, 3],
-            "pumpFlow": [0, 6, 12],
-            "shotWeight": [0, 0, 0],
-            "targetPressure": [20, 20, 20],
-            "targetPumpFlow": [20, 20, 20],
-            "targetTemperature": [900, 900, 900],
-            "temperature": [898, 898, 898],
-            "timeInShot": [2, 3, 5],
-            "waterPumped": [0, 2, 4],
-            "weightFlow": [0, 0, 0],
-        },
-        "duration": 648,
-        "id": 1,
-        "profile": {
-            "id": 1,
-            "name": "Espresso",
-            "globalStopConditions": {"weight": 50},
-            "phases": [],
-            "recipe": {},
-            "waterTemperature": 90,
-        },
-        "timestamp": 1731316192,
-    }
+@dataclass
+class FakeMachine:
+    """A local HTTP server that answers like the REST API of a machine."""
+
+    base_url: str = ''
+    requests: list[Request] = field(default_factory=list)
+    _answers: defaultdict[tuple[str, str], deque[Answer]] = field(
+        default_factory=lambda: defaultdict(deque)
+    )
+    _released: asyncio.Event = field(default_factory=asyncio.Event)
+
+    def answer(
+        self,
+        method: str,
+        path: str,
+        json_value: Any = _NO_JSON,
+        *,
+        text: str | None = None,
+        body: bytes | None = None,
+        status: int = 200,
+        headers: Mapping[str, str] | None = None,
+        delay: float = 0.0,
+    ) -> None:
+        """Add an answer to `method /api/<path>`.
+
+        Give one of a JSON value, `text` or `body`, or none for an empty body.
+        Each call adds the next answer of the route; the last one repeats.
+        `headers` override the default `Content-Type`.
+        `delay` holds the answer for that many seconds, or until the server stops.
+        """
+        if json_value is not _NO_JSON:
+            raw, content_type = json.dumps(json_value).encode(), 'application/json'
+        elif text is not None:
+            raw, content_type = text.encode(), 'text/plain'
+        else:
+            raw, content_type = body or b'', 'application/octet-stream'
+        all_headers = {'Content-Type': content_type, **(headers or {})}
+        key = (method.upper(), f'/api/{path.lstrip("/")}')
+        self._answers[key].append(Answer(raw, status, all_headers, delay))
+
+    async def _handle(self, request: web.Request) -> web.Response:
+        """Record the request and send the next answer of its route."""
+        raw = await request.read()
+        try:
+            parsed = json.loads(raw) if raw else None
+        except ValueError:
+            parsed = None
+        self.requests.append(
+            Request(request.method, request.path, request.headers, raw, parsed)
+        )
+        queue = self._answers.get((request.method, request.path))
+        if not queue:
+            return web.Response(status=404, text='Not found')
+        answer = queue.popleft() if len(queue) > 1 else queue[0]
+        if answer.delay:
+            try:
+                await asyncio.wait_for(self._released.wait(), answer.delay)
+            except TimeoutError:
+                pass
+        return web.Response(
+            body=answer.body, status=answer.status, headers=answer.headers
+        )
 
 
-@pytest.fixture
-def mock_profile_export_data():
-    """Mock single profile export response data.
-
-    The API intentionally omits 'id' in this response.
-    """
-    return {
-        "name": "18g Double",
-        "waterTemperature": 93,
-        "phases": [
-            {
-                "type": "PRESSURE",
-                "skip": False,
-                "name": "Preinfusion",
-                "target": {"end": 3, "curve": "LINEAR", "time": 5000},
-                "stopConditions": {"time": 10000, "pressureAbove": 4},
-                "restriction": 0,
-            }
-        ],
-        "globalStopConditions": {"time": 40000, "weight": 36},
-        "recipe": {"coffeeIn": 18, "coffeeOut": 36, "ratio": 2},
-    }
-
-
-@pytest.fixture
-def mock_maintenance_data():
-    """Mock maintenance response data."""
-    return {
-        "lastDescaleTimestamp": 1753900000,
-        "shotsSinceDescale": 42,
-        "lastBackflushTimestamp": 1753000000,
-        "shotsSinceBackflush": 10,
-    }
-
-
-@pytest.fixture
-def mock_latest_shot_data():
-    """Mock latest shot ID response data."""
-    return [{"lastShotId": "100"}]
-
-
-@pytest.fixture
-def mock_boiler_settings_data():
-    """Mock boiler settings response data."""
-    return {
-        "steamSetPoint": 145,
-        "offsetTemp": 5,
-        "hpwr": 1200,
-        "mainDivider": 2,
-        "brewDivider": 4,
-        "brewDeltaState": True,
-        "dreamSteamState": False,
-        "startupHeatDelta": 10,
-    }
-
-
-@pytest.fixture
-def mock_system_settings_data():
-    """Mock system settings response data."""
-    return {
-        "pumpFlowAtZero": 0.5,
-        "timezoneOffsetMinutes": -300,
-        "sprofilerToken": "abc123xyz",
-        "visualizerToken": "def456uvw",
-        "servicesState": True,
-        "wifiEnabled": True,
-        "releaseChannel": 0,
-    }
-
-
-@pytest.fixture
-def mock_theme_settings_data():
-    """Mock theme settings response data."""
-    return {"colourPrimary": 31, "colourSecondary": 63488}
-
-
-@pytest.fixture
-def mock_display_settings_data():
-    """Mock display settings response data."""
-    return {
-        "lcdBrightness": 80,
-        "lcdDarkMode": False,
-        "lcdSleep": 10,
-        "lcdGoHome": 5,
-    }
-
-
-@pytest.fixture
-def mock_scales_settings_data():
-    """Mock scales settings response data."""
-    return {
-        "forcePredictive": False,
-        "hwScalesEnabled": True,
-        "hwScalesF1": 1000,
-        "hwScalesF2": 2000,
-        "btScalesEnabled": False,
-        "btScalesAutoConnect": False,
-    }
-
-
-@pytest.fixture
-def mock_led_settings_data():
-    """Mock LED settings response data."""
-    return {
-        "color": {"R": 255, "G": 128, "B": 0},
-        "state": True,
-        "disco": False,
-        "tof": {"max": 100, "min": 10},
-    }
-
-
-@pytest.fixture
-def mock_versions_data():
-    """Mock versions response data."""
-    return {
-        "coreVersion": "a06f97fd",
-        "frontVersion": "a06f97fd",
-        "staticVersion": "a06f97fd",
-    }
-
-
-@pytest.fixture
-def mock_settings_data(
-    mock_boiler_settings_data,
-    mock_system_settings_data,
-    mock_led_settings_data,
-    mock_scales_settings_data,
-    mock_display_settings_data,
-    mock_theme_settings_data,
-    mock_versions_data,
-):
-    """Mock aggregate settings response data."""
-    return {
-        "boiler": mock_boiler_settings_data,
-        "system": mock_system_settings_data,
-        "led": mock_led_settings_data,
-        "scales": mock_scales_settings_data,
-        "display": mock_display_settings_data,
-        "theme": mock_theme_settings_data,
-        "versions": mock_versions_data,
-    }
-
-
-@pytest.fixture
-def mock_health_data():
-    """Mock health response data."""
-    return {"status": "ok"}
-
-
-@pytest.fixture
-def mock_firmware_progress_data():
-    """Mock firmware progress response data."""
-    return {"progress": 0, "status": "IDLE", "type": "F_FW"}
-
-
-# API Client fixtures
-
-
-@pytest_asyncio.fixture(loop_scope="session", name="mock_session")
-async def _mock_session():
-    """Mock aiohttp session."""
-    session = MagicMock(spec=ClientSession)
-    yield session
-
-
-@pytest_asyncio.fixture(loop_scope="session", name="api_client")
-async def _api_client(mock_session):
-    """API client with mocked session for unit tests."""
-    async with GaggiuinoAPI(session=mock_session) as client:
-        yield client
-
-
-# Helper fixtures for mocking responses
-
-
-@pytest.fixture
-def mock_response():
-    """Factory fixture to create mock responses."""
-
-    def _create_mock_response(data, status=200):
-        response = AsyncMock()
-        response.status = status
-        response.json = AsyncMock(return_value=data)
-        return response
-
-    return _create_mock_response
-
-
-@pytest.fixture
-def mock_get_factory(mock_response):
-    """Factory fixture to create mock GET responses."""
-
-    def _create_mock_get(url_pattern, response_data, status=200):
-        """Create a mock GET method that returns specific data for URL patterns."""
-
-        async def _mock_get(url, params=None, json_response=True, **kwargs):
-            if url_pattern in url:
-                return response_data
-            return None
-
-        return _mock_get
-
-    return _create_mock_get
-
-
-@pytest.fixture
-def mock_post_factory():
-    """Factory fixture to create mock POST responses."""
-
-    def _create_mock_post(success=True):
-        """Create a mock POST method that returns success/failure."""
-
-        async def _mock_post(url, params=None, json_data=None, **kwargs):
-            return success
-
-        return _mock_post
-
-    return _create_mock_post
+@pytest_asyncio.fixture(loop_scope='function')
+async def machine() -> AsyncIterator[FakeMachine]:
+    """Run a fake machine on 127.0.0.1 and a free port for one test."""
+    fake = FakeMachine()
+    app = web.Application()
+    app.router.add_route('*', '/{tail:.*}', fake._handle)
+    server = TestServer(app, host='127.0.0.1')
+    await server.start_server()
+    fake.base_url = f'http://127.0.0.1:{server.port}'
+    try:
+        yield fake
+    finally:
+        fake._released.set()
+        await server.close()

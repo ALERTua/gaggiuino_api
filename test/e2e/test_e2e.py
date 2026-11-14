@@ -1,366 +1,270 @@
-"""End-to-end tests for Gaggiuino API.
+"""End-to-end tests of the client against a real machine.
 
-These tests run against real hardware and are deselected by default
-(see addopts in pyproject.toml).
-To run these tests, ensure your Gaggiuino device is powered on and accessible.
-
-Run with: pytest -v -m e2e test/e2e
+The tests are deselected by default. Run them with `uv run pytest -m e2e test/e2e`.
+Each test that changes the machine reads the state first and restores it in a `finally`
+block, also when an assert fails. A write goes only to the `led` or `display` settings
+group and to the profiles. A test deletes only the profile that it created itself.
 """
 
-import os
-import time
-from dataclasses import replace
+import asyncio
+import dataclasses
+import json
 
 import pytest
 
+from e2e.e2e_support import is_selected, profile_rows, settings_equal, wait_until
 from gaggiuino_api import (
-    GaggiuinoMaintenance,
-    GaggiuinoProfile,
-    GaggiuinoSettings,
-    GaggiuinoShot,
-    GaggiuinoStatus,
+    BoilerSettings,
+    DisplaySettings,
+    FirmwareProgress,
+    GaggiuinoClient,
+    GaggiuinoNotFoundError,
+    GaggiuinoResponseError,
+    LedSettings,
+    Maintenance,
+    Profile,
+    ProfileSummary,
+    ScalesSettings,
+    Settings,
+    Shot,
+    SystemSettings,
+    ThemeSettings,
+    Versions,
 )
-from gaggiuino_api.models import GaggiuinoLatestShotResult
 
-# Mark all tests in this module as end-to-end tests
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope='session')]
 
+# An id of a shot or a profile that does not exist on the machine.
+MISSING_ID = 999999
 
-# Health Check Tests
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_health(real_api_client):
-    """Test real health endpoint."""
-    is_healthy = await real_api_client.healthy()
-    assert is_healthy is True, "Gaggiuino device is not healthy or not reachable"
+TEST_PROFILE_NAME = '_e2e_test'
 
 
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_get_health(real_api_client):
-    """Test real health endpoint returns status."""
-    health = await real_api_client.get_health()
-    assert health is not None
-    assert health.get("status") == "ok"
+async def selected_and_other(
+    machine: GaggiuinoClient,
+) -> tuple[ProfileSummary, ProfileSummary]:
+    """Return the selected profile and another saved profile."""
+    profiles = await machine.profiles.list()
+    selected = [p for p in profiles if p.selected]
+    assert len(selected) == 1
+    others = [p for p in profiles if not p.selected]
+    if not others:
+        pytest.skip('The machine needs at least two saved profiles')
+    return selected[0], others[0]
 
 
-# System Status Tests
+async def test_healthy(machine: GaggiuinoClient) -> None:
+    assert await machine.healthy() is True
 
 
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_get_status(real_api_client):
-    """Test real system status endpoint."""
-    status = await real_api_client.get_status()
-    assert status is not None
-    assert isinstance(status, GaggiuinoStatus)
-    assert isinstance(status.brewSwitchState, bool)
-    assert isinstance(status.steamSwitchState, bool)
+async def test_status(machine: GaggiuinoClient) -> None:
+    status = await machine.status()
+    selected, _ = await selected_and_other(machine)
+    # Each value goes to a local name, so a failed assert never shows the whole status.
+    profile_id = status.profile_id
+    up_time = status.up_time
+    temperature = status.temperature
+    pressure = status.pressure
+    brew_switch_state = status.brew_switch_state
+    assert profile_id == selected.id
+    assert isinstance(up_time, int)
+    assert isinstance(temperature, float)
+    assert isinstance(pressure, float)
+    assert isinstance(brew_switch_state, bool)
 
 
-# Profile Tests
+async def test_maintenance(machine: GaggiuinoClient) -> None:
+    maintenance = await machine.maintenance()
+    assert isinstance(maintenance, Maintenance)
+    assert maintenance.shots_since_descale >= 0
 
 
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_get_profiles(real_api_client):
-    """Test real profiles endpoint."""
-    profiles = await real_api_client.get_profiles()
-    assert profiles is not None
-    assert isinstance(profiles, list)
-    assert len(profiles) > 0
-    assert all(isinstance(p, GaggiuinoProfile) for p in profiles)
+async def test_firmware_progress(machine: GaggiuinoClient) -> None:
+    progress = await machine.firmware.progress()
+    assert isinstance(progress, FirmwareProgress)
+    assert 0 <= progress.progress <= 100
 
 
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_get_profile(real_api_client):
-    """Test real single profile retrieval (full definition)."""
-    profiles = await real_api_client.get_profiles()
+async def test_settings_get(machine: GaggiuinoClient) -> None:
+    settings = await machine.settings.get()
+    # The settings hold private values, so a failed assert shows only a flag.
+    ok = isinstance(settings, Settings) and isinstance(settings.system, SystemSettings)
+    assert ok
+
+
+@pytest.mark.parametrize(
+    ('group', 'model'),
+    [
+        ('boiler', BoilerSettings),
+        ('system', SystemSettings),
+        ('led', LedSettings),
+        ('scales', ScalesSettings),
+        ('display', DisplaySettings),
+        ('theme', ThemeSettings),
+    ],
+)
+async def test_settings_group_get(
+    machine: GaggiuinoClient, group: str, model: type
+) -> None:
+    value = await getattr(machine.settings, group).get()
+    # Some groups hold private values, so a failed assert shows only a flag.
+    ok = isinstance(value, model)
+    assert ok
+
+
+async def test_settings_versions(machine: GaggiuinoClient) -> None:
+    versions = await machine.settings.versions()
+    assert isinstance(versions, Versions)
+    assert versions.core_version
+
+
+async def test_profiles_list_and_get(machine: GaggiuinoClient) -> None:
+    profiles = await machine.profiles.list()
     assert profiles
+    assert len([p for p in profiles if p.selected]) == 1
+    for summary in profiles:
+        profile = await machine.profiles.get(summary.id)
+        assert isinstance(profile, Profile)
+        assert profile.id == summary.id
+        assert profile.name == summary.name
+        assert profile.phases
 
-    profile = await real_api_client.get_profile(profiles[0])
-    assert profile is not None
-    assert isinstance(profile, GaggiuinoProfile)
-    assert profile.id == profiles[0].id
-    assert profile.name == profiles[0].name
-    assert profile.phases is not None
+
+async def test_profiles_get_missing(machine: GaggiuinoClient) -> None:
+    with pytest.raises(GaggiuinoNotFoundError):
+        await machine.profiles.get(MISSING_ID)
 
 
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_profile_selection(real_api_client):
-    """Test profile selection with restoration.
+async def test_profiles_select_missing(machine: GaggiuinoClient) -> None:
+    rows = await profile_rows(machine)
+    with pytest.raises(GaggiuinoResponseError):
+        await machine.profiles.select(MISSING_ID)
+    assert await profile_rows(machine) == rows
 
-    Pattern: Read -> Modify -> Verify -> Restore
-    """
-    # Get all profiles
-    profiles = await real_api_client.get_profiles()
-    assert profiles is not None
 
-    # Find OFF and a test profile
-    profile_off_name = os.getenv("GAGGIUINO_PROFILE_OFF", "_OFF")
-    profile_test_name = os.getenv("GAGGIUINO_PROFILE_TEST", "test")
+async def test_shots_latest_and_get(machine: GaggiuinoClient) -> None:
+    latest_id = await machine.shots.latest_id()
+    assert latest_id > 0
+    shot = await machine.shots.get(latest_id)
+    assert isinstance(shot, Shot)
+    assert shot.id == latest_id
+    assert shot.datapoints.time_in_shot
 
-    profile_off = next((_ for _ in profiles if _.name == profile_off_name), None)
-    profile_test = next((_ for _ in profiles if _.name == profile_test_name), None)
-    if profile_off is None or profile_test is None:
-        pytest.skip(
-            f"Profiles '{profile_off_name}' and '{profile_test_name}' must exist"
-        )
 
-    # Get current status to know original profile
-    original_status = await real_api_client.get_status()
-    original_profile_id = original_status.profileId
-    select_profile = (
-        profile_test if original_profile_id == profile_off.id else profile_off
-    )  # select opposite profile
+async def test_shots_get_missing(machine: GaggiuinoClient) -> None:
+    with pytest.raises(GaggiuinoNotFoundError):
+        await machine.shots.get(MISSING_ID)
 
+
+async def test_profiles_select(machine: GaggiuinoClient) -> None:
+    selected, other = await selected_and_other(machine)
     try:
-        # Select test profile
-        result = await real_api_client.select_profile(select_profile)
-        assert result is True
-
-        # Verify change
-        status = await real_api_client.get_status()
-        assert status.profileId == select_profile.id
-
+        await machine.profiles.select(other)
+        assert await wait_until(lambda: is_selected(machine, other.id))
     finally:
-        # Restore original profile
-        await real_api_client.select_profile(original_profile_id)
+        await machine.profiles.select(selected.id)
+        assert await wait_until(lambda: is_selected(machine, selected.id))
 
 
-# Shot Tests
+async def test_profiles_create_and_delete(machine: GaggiuinoClient) -> None:
+    rows_before = await profile_rows(machine)
+    ids_before = {row[0] for row in rows_before}
+    assert TEST_PROFILE_NAME not in {row[1] for row in rows_before}, (
+        f'A profile {TEST_PROFILE_NAME!r} is left from an earlier run: remove it by hand'
+    )
+    # A copy of each saved profile, so that a lost profile can be created again by hand.
+    backup = {
+        pid: await machine._transport.get_json(f'profile/{pid}') for pid in ids_before
+    }
+    selected, source_summary = await selected_and_other(machine)
+    source = await machine.profiles.get(source_summary.id)
+    created_id: int | None = None
+    try:
+        created = await machine.profiles.create(
+            dataclasses.replace(source, id=None, name=TEST_PROFILE_NAME)
+        )
+        created_id = created.id
+        assert created.name == TEST_PROFILE_NAME
+        assert created_id not in ids_before
+        rows = await profile_rows(machine)
+        assert (created_id, TEST_PROFILE_NAME, False) in rows
+        copy = await machine.profiles.get(created_id)
+        assert copy.phases == source.phases
+        assert await is_selected(machine, selected.id)
+    finally:
+        # Delete only an id that this test created and that the list still holds: never
+        # an id from before the test, and never an id that the machine does not have.
+        leftovers = {
+            p.id
+            for p in await machine.profiles.list()
+            if p.name == TEST_PROFILE_NAME and p.id not in ids_before
+        }
+        for pid in sorted(leftovers):
+            await machine.profiles.delete(pid)
+        rows_after = await profile_rows(machine)
+        lost = {pid: backup[pid] for pid in ids_before - {row[0] for row in rows_after}}
+        assert not lost, f'Saved profiles were lost: {json.dumps(lost)}'
+        if not await is_selected(machine, selected.id):
+            await machine.profiles.select(selected.id)
+            pytest.fail(
+                f'The selected profile changed and was restored to {selected.id}'
+            )
+        assert rows_after == rows_before
 
 
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_get_latest_shot_id(real_api_client):
-    """Test real latest shot ID endpoint."""
-    result = await real_api_client.get_latest_shot_id()
-    assert result is not None
-    assert isinstance(result, GaggiuinoLatestShotResult)
-    assert result.lastShotId >= 0
+async def test_settings_update_changes(machine: GaggiuinoClient) -> None:
+    # The raw group holds keys that the model does not know: they must survive the write.
+    original = await machine._transport.get_json('settings/display')
+    brightness = original['lcdBrightness']
+    new_brightness = brightness - 1 if brightness > 0 else brightness + 1
+    expected = {**original, 'lcdBrightness': new_brightness}
+    try:
+        await machine.settings.display.update(lcd_brightness=new_brightness)
+        assert await wait_until(lambda: settings_equal(machine, 'display', expected))
+        assert (await machine.settings.display.get()).lcd_brightness == new_brightness
+    finally:
+        await machine._transport.command('POST', 'settings/display', body=original)
+        assert await wait_until(lambda: settings_equal(machine, 'display', original))
 
 
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_get_shot(real_api_client):
-    """Test real shot retrieval."""
-    # Get latest shot ID
-    latest = await real_api_client.get_latest_shot_id()
-    if latest is None or latest.lastShotId == 0:
-        pytest.skip("No shots available for testing")
-
-    # Get the shot
-    shot = await real_api_client.get_shot(latest.lastShotId)
-    assert shot is not None
-    assert isinstance(shot, GaggiuinoShot)
-    assert shot.id == latest.lastShotId
-
-
-# Maintenance Tests
+async def test_settings_update_from_model(machine: GaggiuinoClient) -> None:
+    original = await machine._transport.get_json('settings/led')
+    led = await machine.settings.led.get()
+    red = led.color.r - 1 if led.color.r > 0 else led.color.r + 1
+    changed = dataclasses.replace(led, color=dataclasses.replace(led.color, r=red))
+    expected = {**original, 'color': {**original['color'], 'R': red}}
+    try:
+        await machine.settings.led.update_from(changed)
+        assert await wait_until(lambda: settings_equal(machine, 'led', expected))
+    finally:
+        await machine._transport.command('POST', 'settings/led', body=original)
+        assert await wait_until(lambda: settings_equal(machine, 'led', original))
 
 
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_get_maintenance(real_api_client):
-    """Test real maintenance history endpoint."""
-    maintenance = await real_api_client.get_maintenance()
-    assert maintenance is not None
-    assert isinstance(maintenance, GaggiuinoMaintenance)
-    assert maintenance.lastDescaleTimestamp >= 0
-    assert maintenance.shotsSinceDescale >= 0
-    assert maintenance.lastBackflushTimestamp >= 0
-    assert maintenance.shotsSinceBackflush >= 0
-
-
-# Settings Tests - Each follows the Read -> Modify -> Verify -> Restore pattern
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_get_settings(real_api_client):
-    """Test real settings endpoint."""
-    settings = await real_api_client.get_settings()
-    assert settings is not None
-    assert isinstance(settings, GaggiuinoSettings)
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_boiler_settings_roundtrip(real_api_client):
-    """Test boiler settings GET/POST with restoration.
-
-    Pattern: Read -> Modify -> Verify -> Restore
-    """
-    # 1. Read current settings
-    original = await real_api_client.get_boiler_settings()
-    assert original is not None
-
-    # 2. Modify settings (increment steamSetPoint by 1)
-    modified = replace(original, steamSetPoint=original.steamSetPoint + 1)
-    result = await real_api_client.update_boiler_settings(modified)
-    assert result is True
-
-    # 3. Verify change
-    current = await real_api_client.get_boiler_settings()
-    assert current is not None
-    assert current.steamSetPoint == modified.steamSetPoint
-
-    # 4. Restore original
-    await real_api_client.update_boiler_settings(original)
-    restored = await real_api_client.get_boiler_settings()
-    assert restored is not None
-    assert restored.steamSetPoint == original.steamSetPoint
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_display_settings_roundtrip(real_api_client):
-    """Test display settings GET/POST with restoration.
-
-    Pattern: Read -> Modify -> Verify -> Restore
-    """
-    # 1. Read current settings
-    original = await real_api_client.get_display_settings()
-    assert original is not None
-
-    # 2. Modify settings (increment lcdSleep by 1)
-    modified = replace(original, lcdSleep=original.lcdSleep + 1)
-    result = await real_api_client.update_display_settings(modified)
-    assert result is True
-
-    # 3. Verify change
-    current = await real_api_client.get_display_settings()
-    assert current is not None
-    assert current.lcdSleep == modified.lcdSleep
-
-    # 4. Restore original
-    await real_api_client.update_display_settings(original)
-    restored = await real_api_client.get_display_settings()
-    assert restored is not None
-    assert restored.lcdSleep == original.lcdSleep
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_theme_settings_roundtrip(real_api_client):
-    """Test theme settings GET/POST with restoration.
-
-    Pattern: Read -> Modify -> Verify -> Restore
-    """
-    # 1. Read current settings
-    original = await real_api_client.get_theme_settings()
-    assert original is not None
-
-    # 2. Modify settings (increment primary color by 1)
-    modified = replace(original, colourPrimary=original.colourPrimary + 1)
-    result = await real_api_client.update_theme_settings(modified)
-    assert result is True
-
-    # 3. Verify change
-    current = await real_api_client.get_theme_settings()
-    assert current is not None
-    assert current.colourPrimary == modified.colourPrimary
-
-    # 4. Restore original
-    await real_api_client.update_theme_settings(original)
-    restored = await real_api_client.get_theme_settings()
-    assert restored is not None
-    assert restored.colourPrimary == original.colourPrimary
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_scales_settings_roundtrip(real_api_client):
-    """Test scales settings GET/POST with restoration.
-
-    Pattern: Read -> Modify -> Verify -> Restore
-    """
-    # 1. Read current settings
-    original = await real_api_client.get_scales_settings()
-    assert original is not None
-
-    # 2. Modify settings (toggle forcePredictive boolean)
-    modified = replace(original, forcePredictive=not original.forcePredictive)
-    result = await real_api_client.update_scales_settings(modified)
-    assert result is True
-
-    # 3. Verify change
-    current = await real_api_client.get_scales_settings()
-    assert current is not None
-    assert current.forcePredictive == modified.forcePredictive
-
-    # 4. Restore original
-    await real_api_client.update_scales_settings(original)
-    restored = await real_api_client.get_scales_settings()
-    assert restored is not None
-    assert restored.forcePredictive == original.forcePredictive
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_led_settings_roundtrip(real_api_client):
-    """Test LED settings GET/POST with restoration.
-
-    Pattern: Read -> Modify -> Verify -> Restore
-    """
-    # 1. Read current settings
-    original = await real_api_client.get_led_settings()
-    assert original is not None
-
-    # 2. Modify settings (toggle disco boolean)
-    modified = replace(original, disco=not original.disco)
-    result = await real_api_client.update_led_settings(modified)
-    assert result is True
-
-    # 3. Verify change
-    current = await real_api_client.get_led_settings()
-    assert current is not None
-    assert current.disco == modified.disco
-
-    # 4. Restore original
-    await real_api_client.update_led_settings(original)
-    restored = await real_api_client.get_led_settings()
-    assert restored is not None
-    assert restored.disco == original.disco
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_system_settings_roundtrip(real_api_client):
-    """Test system settings GET/POST with restoration.
-
-    Pattern: Read -> Modify -> Verify -> Restore
-    Note: This test modifies sprofilerToken which is relatively safe.
-    """
-    # 1. Read current settings
-    original = await real_api_client.get_system_settings()
-    assert original is not None
-
-    # 2. Modify settings (change sprofilerToken to unique value)
-    fake_token = f"test_token_{int(time.time())}"
-    modified = replace(original, sprofilerToken=fake_token)
-    result = await real_api_client.update_system_settings(modified)
-    assert result is True
-
-    # 3. Verify change
-    current = await real_api_client.get_system_settings()
-    assert current is not None
-    assert current.sprofilerToken == fake_token
-
-    # 4. Restore original
-    await real_api_client.update_system_settings(original)
-    restored = await real_api_client.get_system_settings()
-    assert restored is not None
-    assert restored.sprofilerToken == original.sprofilerToken
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_get_versions(real_api_client):
-    """Test versions endpoint (read-only)."""
-    versions = await real_api_client.get_versions()
-    assert versions is not None
-    assert versions.coreVersion is not None
-    assert versions.frontVersion is not None
-    assert versions.staticVersion is not None
-
-
-# Firmware Tests (Read-only - we don't want to actually trigger updates)
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_e2e_get_firmware_progress(real_api_client):
-    """Test firmware progress endpoint."""
-    progress = await real_api_client.get_firmware_progress()
-    assert progress is not None
-    assert "progress" in progress
-    assert "status" in progress
-    assert "type" in progress
+async def test_settings_concurrent_updates_both_arrive(
+    machine: GaggiuinoClient,
+) -> None:
+    # A smoke check only: it also passes without the lock; the unit test proves the lock.
+    original = await machine._transport.get_json('settings/display')
+    brightness = original['lcdBrightness']
+    new_brightness = brightness - 1 if brightness > 0 else brightness + 1
+    new_dark_mode = not original['lcdDarkMode']
+    expected = {
+        **original,
+        'lcdBrightness': new_brightness,
+        'lcdDarkMode': new_dark_mode,
+    }
+    try:
+        # Wait for both updates to end, so the restore below runs after both posts.
+        results = await asyncio.gather(
+            machine.settings.display.update(lcd_brightness=new_brightness),
+            machine.settings.display.update(lcd_dark_mode=new_dark_mode),
+            return_exceptions=True,
+        )
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
+        assert await wait_until(lambda: settings_equal(machine, 'display', expected))
+    finally:
+        await machine._transport.command('POST', 'settings/display', body=original)
+        assert await wait_until(lambda: settings_equal(machine, 'display', original))

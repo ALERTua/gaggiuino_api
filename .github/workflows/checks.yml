@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - dev
       - main
     paths-ignore:
       - '**.md'
@@ -42,7 +41,7 @@ jobs:
       contents: read # checkout
     strategy:
       matrix:
-        python-version: ['3.11', '3.12', '3.13', '3.14']
+        python-version: ['3.14']
       fail-fast: false
 
     steps:
@@ -66,9 +65,47 @@ jobs:
       - name: Pre-commit on all files
         run: uv run pre-commit run --all-files
 
+  # proves the lower bounds of the runtime dependencies; the dev tools have no versions, so they are not resolved to the lowest
+  test-lowest:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read # checkout
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "latest"
+          python-version: "3.14"
+          enable-cache: true
+          cache-python: true
+
+      - name: Create the environment
+        run: uv venv
+
+      - name: Install the lowest direct dependencies
+        run: uv pip install --resolution lowest-direct -e .
+
+      - name: Install the test tools
+        run: uv pip install pytest pytest-asyncio
+
+      - name: Show the installed versions
+        run: uv pip freeze
+
+      - name: Run the tests
+        run: uv run --no-sync pytest test
+
   # merges a patch or minor update of Dependabot after all checks pass; a major update stays for a person
   dependabot-merge:
-    needs: test
+    needs: [test, test-lowest]
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     uses: ALERTua/ci-workflows/.github/workflows/dependabot-merge.yml@v4.2.0
     permissions:
