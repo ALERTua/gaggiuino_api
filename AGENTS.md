@@ -21,7 +21,7 @@ Read `.claude/memory/MEMORY.md` before each task. It holds the project memory: t
 ## Workflow
 
 - Task runner is just; see Justfile or `just help` for recipes and prefer them over raw commands.
-- Verification gate for any change: `just pre-all` (ruff, ty, pytest, eof/eol fixers) — run it
+- Verification gate for any change: `just pre` (ruff, ty, pytest, eof/eol fixers) — run it
   after code changes and fix what it finds.
 - Dependencies: `uv add` / `uv add --dev`, never edit pyproject.toml by hand;
   check outdated with `just uv-outdated`.
