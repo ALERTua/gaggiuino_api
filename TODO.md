@@ -1,1 +1,0 @@
-No item is open.
