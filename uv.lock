@@ -230,8 +230,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiohttp" },
-    { name = "mashumaro" },
+    { name = "aiohttp", specifier = ">=3.13.0" },
+    { name = "mashumaro", specifier = ">=3.17" },
 ]
 
 [package.metadata.requires-dev]
