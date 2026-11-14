@@ -128,7 +128,8 @@ class Status(Model):
     readiness_state: int | None = api("readinessState", default=None)
     """The raw readiness state; the documentation does not describe this key or its values.
 
-    Seen: `1` during the warmup and `3` after it.
+    Seen: `1` during the warmup after a start, `2` while the boiler heats to a new target,
+    and `3` at the target.
     """
     warmup_elapsed_seconds: int | None = api("warmupElapsedSeconds", default=None)
     """The time since the warmup started, in seconds; the documentation does not describe this key."""

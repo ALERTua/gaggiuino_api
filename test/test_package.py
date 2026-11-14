@@ -9,13 +9,16 @@ from pathlib import Path
 import gaggiuino_api
 import gaggiuino_api.enums
 import gaggiuino_api.models
-from gaggiuino_api.const import DEFAULT_BASE_URL, DEFAULT_TIMEOUT
+from gaggiuino_api.const import DEFAULT_BASE_URL, DEFAULT_TIMEOUT, MINIMUM_FIRMWARE
 from gaggiuino_api.models import Model
 
 
 def test_all_is_sorted_and_importable():
     for module in (gaggiuino_api, gaggiuino_api.models):
-        assert module.__all__ == sorted(module.__all__)
+        # The order of ruff RUF022: constants first, then the other names.
+        assert module.__all__ == sorted(
+            module.__all__, key=lambda name: (not name.isupper(), name)
+        )
         for name in module.__all__:
             assert hasattr(module, name)
 
@@ -61,6 +64,17 @@ def test_transport_is_not_exported():
 def test_default_base_url_has_no_trailing_slash():
     assert not DEFAULT_BASE_URL.endswith("/")
     assert DEFAULT_TIMEOUT > 0
+
+
+def test_top_level_exports_the_constants():
+    assert gaggiuino_api.DEFAULT_BASE_URL == DEFAULT_BASE_URL
+    assert gaggiuino_api.MINIMUM_FIRMWARE == MINIMUM_FIRMWARE
+    assert {'DEFAULT_BASE_URL', 'MINIMUM_FIRMWARE'} <= set(gaggiuino_api.__all__)
+
+
+def test_readme_names_the_minimum_firmware():
+    readme = Path(__file__).parent.parent / 'README.md'
+    assert f'`{MINIMUM_FIRMWARE}`' in readme.read_text(encoding='utf-8')
 
 
 def test_package_is_marked_as_typed():

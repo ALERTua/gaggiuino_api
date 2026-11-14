@@ -1,5 +1,6 @@
 """Tests of the settings resource on the HTTP level."""
 
+import asyncio
 import dataclasses
 from collections.abc import AsyncIterator
 from typing import Any, assert_type
@@ -262,3 +263,25 @@ async def test_update_from_another_model(
     with pytest.raises(TypeError, match='DisplaySettings'):
         await settings.display.update_from(theme)  # ty: ignore[invalid-argument-type]
     assert machine.requests == []
+
+
+async def test_concurrent_updates_of_one_group_run_one_after_the_other(
+    machine: FakeMachine, settings: SettingsResource
+) -> None:
+    raw = load_fixture('settings_led')
+    assert raw['disco'] is True
+    assert raw['state'] is False
+    # The machine answers the second read with the state after the first post.
+    machine.answer('GET', 'settings/led', raw, delay=0.05)
+    machine.answer('GET', 'settings/led', raw | {'disco': False}, delay=0.05)
+    machine.answer('POST', 'settings/led', {'success': True})
+    await asyncio.gather(
+        settings.led.update(disco=False), settings.led.update(state=True)
+    )
+    assert [request.method for request in machine.requests] == [
+        'GET',
+        'POST',
+        'GET',
+        'POST',
+    ]
+    assert machine.requests[-1].json == raw | {'disco': False, 'state': True}
