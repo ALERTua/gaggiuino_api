@@ -6,6 +6,7 @@ block, also when an assert fails. A write goes only to the `led` or `display` se
 group and to the profiles. A test deletes only the profile that it created itself.
 """
 
+import asyncio
 import dataclasses
 import json
 
@@ -238,3 +239,28 @@ async def test_settings_update_from_model(machine: GaggiuinoClient) -> None:
     finally:
         await machine._transport.command('POST', 'settings/led', body=original)
         assert await wait_until(lambda: settings_equal(machine, 'led', original))
+
+
+async def test_settings_concurrent_updates_keep_both_changes(
+    machine: GaggiuinoClient,
+) -> None:
+    # A check on the real machine only: its timing can hide a lost change also without the
+    # lock of the group. The unit test of the settings resource proves the lock.
+    original = await machine._transport.get_json('settings/display')
+    brightness = original['lcdBrightness']
+    new_brightness = brightness - 1 if brightness > 0 else brightness + 1
+    new_dark_mode = not original['lcdDarkMode']
+    expected = {
+        **original,
+        'lcdBrightness': new_brightness,
+        'lcdDarkMode': new_dark_mode,
+    }
+    try:
+        await asyncio.gather(
+            machine.settings.display.update(lcd_brightness=new_brightness),
+            machine.settings.display.update(lcd_dark_mode=new_dark_mode),
+        )
+        assert await wait_until(lambda: settings_equal(machine, 'display', expected))
+    finally:
+        await machine._transport.command('POST', 'settings/display', body=original)
+        assert await wait_until(lambda: settings_equal(machine, 'display', original))
