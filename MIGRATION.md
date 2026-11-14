@@ -32,6 +32,8 @@ Version 1.0 renames the client, its methods, the models and some exceptions. It 
 
 The `<group>` is one of `boiler`, `system`, `led`, `scales`, `display` and `theme`.
 
+The package also exports the constants `DEFAULT_BASE_URL` and `MINIMUM_FIRMWARE`.
+
 ### Models
 
 Each model class loses the `Gaggiuino` prefix.
@@ -108,6 +110,9 @@ The field `selected` of a profile moved to `ProfileSummary`. A `Profile` has no 
 - The package needs Python 3.14.2 or newer.
 - A settings update reads the whole group, changes the named fields and sends the whole group back.
 - `profiles.delete()` raises `GaggiuinoNotFoundError` without a delete request for an id that the list of the machine does not have. See the README for the reason.
-- `profiles.select()` and `profiles.delete()` raise `TypeError` for a `bool`, because a `bool` is not an id.
+- `profiles.get()`, `profiles.select()`, `profiles.delete()`, `shots.get()` and `shots.delete()` raise `TypeError` for a `bool`, because a `bool` is not an id.
+- A number timeout of zero or less, or one that is not finite, raises `ValueError`. In 0.x, `timeout=0` meant no timeout. An `aiohttp.ClientTimeout` object passes unchanged.
+- An answer with `"success"` as the string `"false"` in any letter case is a refusal too: it raises `GaggiuinoCommandError`.
+- `repr()` of a model hides the secret and personal values: the tokens, the MQTT values, the pinned scales address and the machine name.
 - `GaggiuinoCommandError` has the attribute `status`, the HTTP status of the answer.
 - A settings `update()` takes a model, not a `dict`, for a nested field. For example, `led.update(color=LedColor(r=255, g=0, b=0))`. A `dict` raises `TypeError`.

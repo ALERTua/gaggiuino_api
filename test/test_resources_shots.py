@@ -62,6 +62,16 @@ async def test_get_missing(machine: FakeMachine, shots: Shots) -> None:
         await shots.get(999)
 
 
+@pytest.mark.parametrize('method', ['get', 'delete'])
+@pytest.mark.parametrize('value', [True, False])
+async def test_bool_is_not_a_shot_id(
+    machine: FakeMachine, shots: Shots, method: str, value: bool
+) -> None:
+    with pytest.raises(TypeError, match='bool'):
+        await getattr(shots, method)(value)
+    assert machine.requests == []
+
+
 @pytest.mark.parametrize('text', ['', 'OK'])
 @pytest.mark.parametrize('as_model', [False, True], ids=['int', 'shot'])
 async def test_delete(

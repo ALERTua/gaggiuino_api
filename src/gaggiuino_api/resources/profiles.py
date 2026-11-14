@@ -6,20 +6,7 @@ import dataclasses
 from .._transport import Transport
 from ..exceptions import GaggiuinoNotFoundError, GaggiuinoResponseFormatError
 from ..models.profiles import Profile, ProfileCreated, ProfileSummary
-
-
-def _profile_id(profile: int | ProfileSummary | Profile) -> int:
-    """Return the id of a profile given as an id or as a model.
-
-    Raise `ValueError` for a `Profile` without an id, and `TypeError` for a `bool`.
-    """
-    if isinstance(profile, bool):
-        raise TypeError('A bool is not a profile id')
-    if isinstance(profile, int):
-        return profile
-    if profile.id is None:
-        raise ValueError(f'The profile {profile.name!r} has no id')
-    return profile.id
+from ._ids import item_id
 
 
 class Profiles:
@@ -46,8 +33,10 @@ class Profiles:
 
         The machine leaves the id out of the answer, so the result gets
         `profile_id` as its id.
+        Raise `TypeError` for a `bool` before any request.
         Raise `GaggiuinoNotFoundError` when the profile does not exist.
         """
+        profile_id = item_id(profile_id, 'profile')
         data = await self._transport.get_json(f'profile/{profile_id}')
         return dataclasses.replace(Profile.from_api(data), id=profile_id)
 
@@ -60,7 +49,7 @@ class Profiles:
         Raise `GaggiuinoResponseError` when the profile does not exist: the
         machine answers HTTP 500 for it, not 404.
         """
-        profile_id = _profile_id(profile)
+        profile_id = item_id(profile, 'profile')
         await self._transport.command('POST', f'profile-select/{profile_id}')
 
     async def create(self, profile: Profile) -> ProfileCreated:
@@ -84,7 +73,7 @@ class Profiles:
         and send no delete. Raise `ValueError` for a `Profile` without an id, and
         `TypeError` for a `bool`.
         """
-        profile_id = _profile_id(profile)
+        profile_id = item_id(profile, 'profile')
         if profile_id not in {saved.id for saved in await self.list()}:
             raise GaggiuinoNotFoundError(
                 404, f'The machine has no profile with the id {profile_id}'

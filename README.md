@@ -54,7 +54,7 @@ Output:
 Morning blend: 23.1 C, 0.1 bar
 ```
 
-Use the client as an async context manager. You can also call `await machine.connect()` and `await machine.close()` yourself. The client keeps no state. Each call asks the machine.
+Use the client as an async context manager. You can also call `await machine.connect()` and `await machine.close()` yourself. The client keeps no cached state of the machine. Each call asks the machine.
 
 ## Examples
 
@@ -210,7 +210,7 @@ True
 | `GaggiuinoConnectionTimeoutError` | The machine did not answer in time. |
 | `GaggiuinoResponseError` | The machine answered with an HTTP error status. It has `status` and `body`. |
 | `GaggiuinoNotFoundError` | A subclass of `GaggiuinoResponseError` for HTTP 404. |
-| `GaggiuinoCommandError` | The machine answered with `"success": false`. It has `status`, the HTTP status of the answer. |
+| `GaggiuinoCommandError` | The machine answered with `"success": false`, or with the string `"false"` in any letter case. It has `status`, the HTTP status of the answer. |
 | `GaggiuinoResponseFormatError` | The answer does not have the expected format. |
 
 ```python
@@ -240,7 +240,7 @@ No such shot: 404
 
 ### Shared session and timeout
 
-Give your own `aiohttp` session to share it with the rest of your application. The client does not close a session that you give. The `timeout` is in seconds, or an `aiohttp.ClientTimeout`. The default is 5 seconds. The timeout of the client replaces the timeout of a session that you give. A timeout of zero or less raises `ValueError`. A call after `close()` opens a new own session, so call `close()` again after it.
+Give your own `aiohttp` session to share it with the rest of your application. The client does not close a session that you give. The `timeout` is in seconds, or an `aiohttp.ClientTimeout`. The default is 5 seconds. The timeout of the client replaces the timeout of a session that you give. A number of zero or less, or a number that is not finite, raises `ValueError`; an `aiohttp.ClientTimeout` object passes unchanged. The client maps each error status itself, so a `raise_for_status` setting or hook of your session does not run for its requests. A call after `close()` opens a new own session, so call `close()` again after it.
 
 ```python
 import aiohttp

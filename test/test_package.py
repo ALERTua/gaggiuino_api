@@ -74,7 +74,9 @@ def test_top_level_exports_the_constants():
 
 def test_readme_names_the_minimum_firmware():
     readme = Path(__file__).parent.parent / 'README.md'
-    assert f'`{MINIMUM_FIRMWARE}`' in readme.read_text(encoding='utf-8')
+    text = readme.read_text(encoding='utf-8')
+    assert f'`{MINIMUM_FIRMWARE}`' in text
+    assert f'main-{MINIMUM_FIRMWARE}' in text
 
 
 def test_package_is_marked_as_typed():

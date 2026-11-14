@@ -1,6 +1,7 @@
 """Tests of the HTTP transport: URLs, JSON parsing, error mapping and the session lifecycle."""
 
 import logging
+import math
 import socket
 from collections.abc import AsyncIterator
 
@@ -318,7 +319,9 @@ async def test_default_timeout_applies_without_a_timeout(
         await t.close()
 
 
-@pytest.mark.parametrize('timeout', [0, 0.0, -1, True, False])
+@pytest.mark.parametrize(
+    'timeout', [0, 0.0, -1, True, False, math.nan, math.inf, -math.inf]
+)
 def test_timeout_of_zero_or_less_is_refused(timeout: float) -> None:
     with pytest.raises(ValueError, match='timeout'):
         Transport('http://127.0.0.1', timeout=timeout)

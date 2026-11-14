@@ -109,8 +109,7 @@ def api(key: str, *, default: object = dataclasses.MISSING, repr: bool = True) -
 
     The model reads the field from `key` and writes it back under `key`.
     Without `default` the field is required. Give `default=None` for an optional field.
-    Give `repr=False` for a field that holds a secret or a personal value, so that
-    `repr()` of the model does not show it.
+    Give `repr=False` to hide a secret or personal value from `repr()`.
     """
     return dataclasses.field(default=default, repr=repr, metadata={"alias": key})
 

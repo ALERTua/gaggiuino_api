@@ -1,5 +1,7 @@
 """Exceptions of the Gaggiuino API client."""
 
+from typing import Self
+
 
 class GaggiuinoError(Exception):
     """Base class of each error that the library raises."""
@@ -13,7 +15,7 @@ class GaggiuinoConnectionTimeoutError(GaggiuinoError):
     """The machine did not answer in time."""
 
 
-# The most characters of the answer body that the text of `GaggiuinoResponseError` holds.
+# Max body characters in the text of `GaggiuinoResponseError`.
 _MESSAGE_BODY_LIMIT = 500
 
 
@@ -33,6 +35,10 @@ class GaggiuinoResponseError(GaggiuinoError):
             shown = body
         super().__init__(f"HTTP {status}: {shown}" if shown else f"HTTP {status}")
 
+    def __reduce__(self) -> tuple[type[Self], tuple[int, str]]:
+        # `pickle` and `copy` would build the text again from `args[0]`.
+        return type(self), (self.status, self.body)
+
 
 class GaggiuinoNotFoundError(GaggiuinoResponseError):
     """The machine answered with HTTP 404, for example for a shot or a profile that does not exist.
@@ -43,9 +49,10 @@ class GaggiuinoNotFoundError(GaggiuinoResponseError):
 
 
 class GaggiuinoCommandError(GaggiuinoError):
-    """The machine refused a command: its answer has `"success": false`.
+    """The machine refused a command: its answer has `"success": false` or `"false"`.
 
-    The attribute `status` is the HTTP status of the answer.
+    The string `"false"` counts in any letter case. The attribute `status` is the HTTP
+    status of the answer.
     """
 
     def __init__(self, message: str = "", status: int | None = None) -> None:

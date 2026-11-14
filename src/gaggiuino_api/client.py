@@ -15,7 +15,7 @@ from .resources import Firmware, Profiles, SettingsResource, Shots
 
 
 class GaggiuinoClient:
-    """Async client of one machine. It keeps no state: each call asks the machine.
+    """Async client of one machine. It keeps no cached state: each call asks the machine.
 
     A session that the caller gives stays open after `close()`.
 

@@ -2,11 +2,14 @@
 
 import asyncio
 import dataclasses
+import socket
 from collections.abc import AsyncIterator
 from typing import Any, assert_type
 
 import pytest
 import pytest_asyncio
+from aiohttp import web
+from aiohttp.test_utils import TestServer
 
 from conftest import FakeMachine
 from fixture_loader import load_fixture
@@ -285,3 +288,33 @@ async def test_concurrent_updates_of_one_group_run_one_after_the_other(
         'POST',
     ]
     assert machine.requests[-1].json == raw | {'disco': False, 'state': True}
+
+
+def test_one_client_in_two_event_loops_updates_concurrently() -> None:
+    # A lock binds to the first loop in which two updates wait, so a second `asyncio.run`
+    # needs a lock of its own. The fake machine lives inside each run, on the same port.
+    with socket.socket() as sock:
+        sock.bind(('127.0.0.1', 0))
+        port = sock.getsockname()[1]
+    transport = Transport(f'http://127.0.0.1:{port}', timeout=5)
+    group = SettingsResource(transport).led
+    raw = load_fixture('settings_led')
+
+    async def run() -> list[str]:
+        fake = FakeMachine()
+        app = web.Application()
+        app.router.add_route('*', '/{tail:.*}', fake._handle)
+        server = TestServer(app, host='127.0.0.1', port=port)
+        await server.start_server()
+        try:
+            fake.answer('GET', 'settings/led', raw)
+            fake.answer('POST', 'settings/led', {'success': True})
+            await asyncio.gather(group.update(disco=False), group.update(state=True))
+        finally:
+            fake._released.set()
+            await server.close()
+            await transport.close()
+        return [request.method for request in fake.requests]
+
+    for _ in range(2):
+        assert asyncio.run(run()) == ['GET', 'POST', 'GET', 'POST']
