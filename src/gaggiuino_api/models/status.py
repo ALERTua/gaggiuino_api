@@ -34,7 +34,7 @@ class Status(Model):
     """The state of the brew switch."""
     steam_switch_state: bool = api("steamSwitchState")
     """The state of the steam switch."""
-    machine_name: str = api("machineName")
+    machine_name: str = api("machineName", repr=False)
     """The name of the machine that the user set."""
     boiler_temperature: float | None = api("boilerTemperature", default=None)
     """The temperature of the boiler; the documentation does not describe this key.

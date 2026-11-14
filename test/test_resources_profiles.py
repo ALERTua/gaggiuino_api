@@ -105,7 +105,7 @@ async def test_profile_without_id_sends_nothing(
     assert machine.requests == []
 
 
-@pytest.mark.parametrize('method', ['select', 'delete'])
+@pytest.mark.parametrize('method', ['get', 'select', 'delete'])
 @pytest.mark.parametrize('value', [True, False])
 async def test_bool_is_not_a_profile_id(
     machine: FakeMachine, profiles: Profiles, method: str, value: bool

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import math
 from typing import Any, Literal, NoReturn
 
 import aiohttp
@@ -41,10 +42,10 @@ class Transport:
         if timeout is None:
             timeout = DEFAULT_TIMEOUT
         if not isinstance(timeout, aiohttp.ClientTimeout):
-            # aiohttp reads a total of zero or less as no timeout at all.
-            if isinstance(timeout, bool) or timeout <= 0:
+            # aiohttp treats a total <= 0 as no timeout.
+            if isinstance(timeout, bool) or not math.isfinite(timeout) or timeout <= 0:
                 raise ValueError(
-                    'The timeout must be a number above zero or a ClientTimeout, '
+                    'The timeout must be a finite number above zero or a ClientTimeout, '
                     f'not {timeout!r}'
                 )
             timeout = aiohttp.ClientTimeout(total=timeout)
@@ -113,8 +114,7 @@ class Transport:
                 f'{method} {path} failed: the session is closed'
             )
         try:
-            # The library maps each error status itself, also for a session of the caller
-            # that raises on an error status.
+            # Map error statuses here, even for a caller session that raises on them.
             async with session.request(
                 method,
                 url,
@@ -146,28 +146,20 @@ def _parse_json(raw: bytes) -> Any:
 
 
 def _check_success[T](parsed: T, status: int) -> T:
-    """Raise `GaggiuinoCommandError` for a JSON object that refuses the command.
-
-    The command is refused when `success` is JSON `false` or the string `false` in any
-    letter case. A missing key and each other value mean success.
-    """
+    """Raise `GaggiuinoCommandError` when `success` is false or the string "false" (any case)."""
     if isinstance(parsed, dict) and _is_refusal(parsed.get('success')):
         raise GaggiuinoCommandError(_refusal_message(parsed), status)
     return parsed
 
 
 def _is_refusal(success: object) -> bool:
-    """Return True for the value `false` of the key `success`, as JSON or as a string."""
     if success is False:
         return True
     return isinstance(success, str) and success.lower() == 'false'
 
 
 def _refusal_message(parsed: dict[str, Any]) -> str:
-    """Return the text of `error`, else the text of `message`, else an empty string.
-
-    A `null` value and an empty string count as missing.
-    """
+    """Return `error`, else `message`, else ''; null and '' count as missing."""
     for key in ('error', 'message'):
         value = parsed.get(key)
         if value is not None and value != '':

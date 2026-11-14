@@ -87,6 +87,14 @@ def test_false_string_in_bool_field():
     assert status.startup_init_finished is False
 
 
+def test_repr_hides_the_machine_name():
+    status = Status.from_api(_raw(machineName="Kitchen of Alex"))
+    assert "Kitchen of Alex" not in repr(status)
+    assert "profile_name='_OFF'" in repr(status)
+    assert status.machine_name == "Kitchen of Alex"
+    assert status.to_api()["machineName"] == "Kitchen of Alex"
+
+
 def test_model_is_frozen():
     status = Status.from_api(_raw())
     name = "up_time"

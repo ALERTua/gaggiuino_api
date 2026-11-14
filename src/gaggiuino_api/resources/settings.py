@@ -22,19 +22,13 @@ from ..models.settings import (
 
 
 class SettingsGroup[T: Model]:
-    """One writable group of the settings, for example the boiler settings.
-
-    The machine replaces the whole group on each write, so `update()` and `update_from()`
-    read the group first and send it back whole with the changes laid over it. An update
-    is not atomic: it is a read followed by a post. A second concurrent call of the same
-    client waits for the first, so no change is lost between them. A write of another
-    client, or of the web UI of the machine, between the read and the post can still lose
-    a change. Each key that the caller does not change goes back to the machine with the
-    value that the machine sent, also each key that the library does not know.
+    """A writable settings group. An update reads the group, lays the changes over it and
+    posts it whole. Updates of one group by one client run one after the other; a write by
+    another client between the read and the post is lost. Unknown keys go back unchanged.
     """
 
     def __init__(self, transport: Transport, group: str, model: type[T]) -> None:
-        self._lock = asyncio.Lock()
+        self._loop_lock: tuple[asyncio.AbstractEventLoop, asyncio.Lock] | None = None
         self._transport = transport
         self._group = group
         self._path = f'settings/{group}'
@@ -52,9 +46,8 @@ class SettingsGroup[T: Model]:
         A value is a plain value, an enum member, or an instance of the nested model for a
         nested field, for example `color=LedColor(r=255, g=0, b=0)`. A changed key goes to
         the machine in the form that the model writes, for example `"130"` as `130`.
-        Raise `TypeError` before any request when no field is named, a name is not a
-        field of the model, a nested field gets a value that is not an instance of its
-        model class (a `dict` too), or a plain field gets a model.
+        Raise `TypeError` before any request for no field, an unknown name, a nested field
+        without an instance of its model, or a plain field with a model.
         Raise `ValueError` before any request for `None`, and before the write for a
         value that the model cannot read.
         Raise `GaggiuinoCommandError` when the machine refuses the write.
@@ -101,13 +94,20 @@ class SettingsGroup[T: Model]:
             )
         await self._write(settings.to_api())
 
+    def _lock_of_running_loop(self) -> asyncio.Lock:
+        """Return the lock of the running loop; a lock binds to the first loop that waits."""
+        loop = asyncio.get_running_loop()
+        if self._loop_lock is None or self._loop_lock[0] is not loop:
+            self._loop_lock = (loop, asyncio.Lock())
+        return self._loop_lock[1]
+
     async def _write(self, changes: dict[str, Any]) -> None:
         """Lay `changes`, keyed by the firmware names, over the group and send the group.
 
         Raise `GaggiuinoResponseFormatError` when the group of the machine is not a JSON
         object that the model can read.
         """
-        async with self._lock:
+        async with self._lock_of_running_loop():
             raw = await self._transport.get_json(self._path)
             if not isinstance(raw, dict):
                 raise GaggiuinoResponseFormatError(

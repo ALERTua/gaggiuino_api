@@ -241,11 +241,10 @@ async def test_settings_update_from_model(machine: GaggiuinoClient) -> None:
         assert await wait_until(lambda: settings_equal(machine, 'led', original))
 
 
-async def test_settings_concurrent_updates_keep_both_changes(
+async def test_settings_concurrent_updates_both_arrive(
     machine: GaggiuinoClient,
 ) -> None:
-    # A check on the real machine only: its timing can hide a lost change also without the
-    # lock of the group. The unit test of the settings resource proves the lock.
+    # A smoke check only: it also passes without the lock; the unit test proves the lock.
     original = await machine._transport.get_json('settings/display')
     brightness = original['lcdBrightness']
     new_brightness = brightness - 1 if brightness > 0 else brightness + 1
@@ -256,10 +255,15 @@ async def test_settings_concurrent_updates_keep_both_changes(
         'lcdDarkMode': new_dark_mode,
     }
     try:
-        await asyncio.gather(
+        # Wait for both updates to end, so the restore below runs after both posts.
+        results = await asyncio.gather(
             machine.settings.display.update(lcd_brightness=new_brightness),
             machine.settings.display.update(lcd_dark_mode=new_dark_mode),
+            return_exceptions=True,
         )
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
         assert await wait_until(lambda: settings_equal(machine, 'display', expected))
     finally:
         await machine._transport.command('POST', 'settings/display', body=original)

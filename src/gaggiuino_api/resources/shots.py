@@ -3,6 +3,7 @@
 from .._transport import Transport
 from ..exceptions import GaggiuinoResponseFormatError
 from ..models.shots import LatestShot, Shot
+from ._ids import item_id
 
 
 class Shots:
@@ -27,8 +28,10 @@ class Shots:
     async def get(self, shot_id: int) -> Shot:
         """Return a shot with its datapoints and its profile: `GET /api/shots/<id>`.
 
+        Raise `TypeError` for a `bool` before any request.
         Raise `GaggiuinoNotFoundError` when the shot does not exist.
         """
+        shot_id = item_id(shot_id, 'shot')
         data = await self._transport.get_json(f'shots/{shot_id}')
         return Shot.from_api(data)
 
@@ -37,7 +40,8 @@ class Shots:
 
         `shot` is an id or a `Shot`. The deletion cannot be undone. The machine
         needs an SD card for it.
+        Raise `TypeError` for a `bool` before any request.
         Raise `GaggiuinoResponseError` when the machine refuses the deletion.
         """
-        shot_id = shot.id if isinstance(shot, Shot) else shot
+        shot_id = item_id(shot, 'shot')
         await self._transport.command('DELETE', f'shots/{shot_id}')
