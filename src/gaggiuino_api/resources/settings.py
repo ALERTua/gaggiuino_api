@@ -1,5 +1,6 @@
 """The settings of the machine: read all of them, and read or update one group."""
 
+import asyncio
 import dataclasses
 import typing
 from enum import Enum
@@ -25,14 +26,15 @@ class SettingsGroup[T: Model]:
 
     The machine replaces the whole group on each write, so `update()` and `update_from()`
     read the group first and send it back whole with the changes laid over it. An update
-    is not atomic: it is a read followed by a post. A change is lost when another write to
-    the same group comes between the read and the post. This holds for another client, and
-    also for a second concurrent call of the same client. Each key that the caller does
-    not change goes back to the machine with the value that the machine sent, also each
-    key that the library does not know.
+    is not atomic: it is a read followed by a post. A second concurrent call of the same
+    client waits for the first, so no change is lost between them. A write of another
+    client, or of the web UI of the machine, between the read and the post can still lose
+    a change. Each key that the caller does not change goes back to the machine with the
+    value that the machine sent, also each key that the library does not know.
     """
 
     def __init__(self, transport: Transport, group: str, model: type[T]) -> None:
+        self._lock = asyncio.Lock()
         self._transport = transport
         self._group = group
         self._path = f'settings/{group}'
@@ -105,22 +107,25 @@ class SettingsGroup[T: Model]:
         Raise `GaggiuinoResponseFormatError` when the group of the machine is not a JSON
         object that the model can read.
         """
-        raw = await self._transport.get_json(self._path)
-        if not isinstance(raw, dict):
-            raise GaggiuinoResponseFormatError(
-                f'Expected a JSON object of the {self._group} settings, '
-                f'got {type(raw).__name__}'
+        async with self._lock:
+            raw = await self._transport.get_json(self._path)
+            if not isinstance(raw, dict):
+                raise GaggiuinoResponseFormatError(
+                    f'Expected a JSON object of the {self._group} settings, '
+                    f'got {type(raw).__name__}'
+                )
+            # A bad answer of the machine is not a bad value of the caller.
+            self._model.from_api(raw)
+            try:
+                parsed = self._model.from_api(_overlay(raw, changes))
+            except GaggiuinoResponseFormatError as err:
+                raise ValueError(
+                    f'A bad value for the {self._group} settings: {err}'
+                ) from err
+            normal = _pick(changes, parsed.to_api())
+            await self._transport.command(
+                'POST', self._path, body=_overlay(raw, normal)
             )
-        # A bad answer of the machine is not a bad value of the caller.
-        self._model.from_api(raw)
-        try:
-            parsed = self._model.from_api(_overlay(raw, changes))
-        except GaggiuinoResponseFormatError as err:
-            raise ValueError(
-                f'A bad value for the {self._group} settings: {err}'
-            ) from err
-        normal = _pick(changes, parsed.to_api())
-        await self._transport.command('POST', self._path, body=_overlay(raw, normal))
 
 
 def _aliases(model: type[Model]) -> dict[str, str]:

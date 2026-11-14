@@ -21,7 +21,7 @@ The client covers the live status, the saved profiles, the shot history, the set
 - A Gaggiuino machine on your network. The default address is `http://gaggiuino.local`.
 - Firmware `c929939` or newer. Get it from the [release `main-c929939`](https://github.com/Zer0-bit/gaggiuino/releases/tag/main-c929939).
 
-One version of this library supports one iteration of the REST API of the firmware. It does not support each firmware. Version 1.0 supports the iteration of firmware `c929939`. When the firmware author changes the REST API, a new version of the library follows. That version names the newer firmware and requires it. Pin an exact version of the library in an application that must keep working with one firmware. The Home Assistant integration [hass-gaggiuino](https://github.com/ALERTua/hass-gaggiuino) does this.
+One version of this library supports one iteration of the REST API of the firmware. It does not support each firmware. Version 1.0 supports the iteration of firmware `c929939`. When the firmware author changes the REST API, a new version of the library follows. That version names the newer firmware and requires it. The package has the constant `MINIMUM_FIRMWARE` with this value. Pin an exact version of the library in an application that must keep working with one firmware. The Home Assistant integration [hass-gaggiuino](https://github.com/ALERTua/hass-gaggiuino) does this.
 
 ## Install
 
@@ -156,7 +156,7 @@ boiler = await machine.settings.boiler.get()
 await machine.settings.boiler.update_from(boiler)
 ```
 
-An update reads the whole group from the machine, changes only the fields that you name, and sends the whole group back. Keys that the library does not know stay as they are. A name that the group model does not have raises `TypeError` before any request. The group `webUi` is read-only inside `settings.get()`. See [UNSUPPORTED.md](UNSUPPORTED.md).
+An update reads the whole group from the machine, changes only the fields that you name, and sends the whole group back. Two concurrent updates of the same group of one client run one after the other, so no change is lost between them. A write of another client or of the web UI of the machine between the read and the send can still lose a change. Keys that the library does not know stay as they are. A name that the group model does not have raises `TypeError` before any request. The group `webUi` is read-only inside `settings.get()`. See [UNSUPPORTED.md](UNSUPPORTED.md).
 
 ### Maintenance
 

@@ -1,4 +1,5 @@
 from .client import GaggiuinoClient
+from .const import DEFAULT_BASE_URL, MINIMUM_FIRMWARE
 from .enums import (
     CurveType,
     FirmwareStatus,
@@ -46,6 +47,8 @@ from .models import (
 )
 
 __all__ = [
+    'DEFAULT_BASE_URL',
+    'MINIMUM_FIRMWARE',
     'BoilerSettings',
     'CurveType',
     'DisplaySettings',
